@@ -32,6 +32,6 @@ class NusakkirApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        com.example.ads.AdMobManager.initialize(this)
+        com.example.ads.AdManager.initialize(this)
     }
 }

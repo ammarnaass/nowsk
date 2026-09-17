@@ -1,0 +1,214 @@
+openapi: 3.0.3
+info:
+  title: Prayer Times API
+  description: Unified REST API proxy and caching layer for AlAdhan Prayer Times API with Redis caching, request normalization, and Algeria defaults.
+  version: 1.0.0
+  contact:
+    name: Nsakkr API Support
+servers:
+  - url: /api/v1
+    description: Current v1 API
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns health status of the service, Redis connectivity, and server timestamp.
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              example:
+                status: ok
+                service: Prayer Times API
+                version: 1.0.0
+                cache: connected
+                time: "2026-09-17T09:30:00Z"
+
+  /prayer-times:
+    get:
+      summary: Get daily prayer times by coordinates
+      description: Fetches normalized prayer timings (Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha, Imsak, Midnight) and Hijri calendar for a given GPS coordinate.
+      parameters:
+        - name: latitude
+          in: query
+          required: true
+          schema:
+            type: number
+            minimum: -90
+            maximum: 90
+          example: 35.7058
+        - name: longitude
+          in: query
+          required: true
+          schema:
+            type: number
+            minimum: -180
+            maximum: 180
+          example: 4.5419
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          example: "2026-09-17"
+        - name: method
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 19
+        - name: school
+          in: query
+          required: false
+          schema:
+            type: integer
+            enum: [0, 1]
+          example: 0
+        - name: tune
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "0,2,0,0,1,0,0,0,0"
+      responses:
+        '200':
+          description: Successful response with prayer times
+          content:
+            application/json:
+              example:
+                success: true
+                data:
+                  date: "2026-09-17"
+                  location:
+                    latitude: 35.7058
+                    longitude: 4.5419
+                  timezone: "Africa/Algiers"
+                  method:
+                    id: 19
+                    name: "Ministry of Religious Affairs and Wakfs, Algeria"
+                  timings:
+                    fajr: "05:01"
+                    sunrise: "06:29"
+                    dhuhr: "12:34"
+                    asr: "16:08"
+                    sunset: "18:42"
+                    maghrib: "18:42"
+                    isha: "20:03"
+                    imsak: "04:51"
+                    midnight: "00:35"
+                  hijri:
+                    day: "25"
+                    month: 3
+                    monthName: "Rabi al-awwal"
+                    monthNameAr: "ربيع الأول"
+                    year: "1448"
+                  nextPrayer:
+                    name: "Maghrib"
+                    time: "18:42"
+                meta:
+                  provider: "AlAdhan"
+                  cached: false
+                  stale: false
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              example:
+                success: false
+                error:
+                  code: "INVALID_LATITUDE"
+                  message: "Latitude must be between -90 and 90."
+
+  /prayer-times/city:
+    get:
+      summary: Get daily prayer times by city and country
+      parameters:
+        - name: city
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "M'Sila"
+        - name: country
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "Algeria"
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "2026-09-17"
+      responses:
+        '200':
+          description: Successful prayer times response
+
+  /prayer-times/address:
+    get:
+      summary: Get daily prayer times by free-form address string
+      parameters:
+        - name: address
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "M'Sila, Algeria"
+      responses:
+        '200':
+          description: Successful prayer times response
+
+  /prayer-times/monthly:
+    get:
+      summary: Get full monthly prayer times calendar
+      parameters:
+        - name: latitude
+          in: query
+          required: true
+          schema:
+            type: number
+          example: 35.7058
+        - name: longitude
+          in: query
+          required: true
+          schema:
+            type: number
+          example: 4.5419
+        - name: month
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+          example: 9
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+          example: 2026
+      responses:
+        '200':
+          description: Full month days schedule
+
+  /methods:
+    get:
+      summary: List calculation methods
+      description: Returns all AlAdhan calculation methods cached in Redis.
+      responses:
+        '200':
+          description: List of methods
+          content:
+            application/json:
+              example:
+                success: true
+                data:
+                  - id: 3
+                    name: "Muslim World League"
+                  - id: 19
+                    name: "Ministry of Religious Affairs and Wakfs, Algeria"

@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: prayer_times_app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DB_HOST=mysql
+    depends_on:
+      - redis
+      - mysql
+    networks:
+      - prayer_net
+
+  nginx:
+    image: nginx:alpine
+    container_name: prayer_times_nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - .:/var/www/html
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+    networks:
+      - prayer_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: prayer_times_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - prayer_net
+
+  mysql:
+    image: mysql:8.0
+    container_name: prayer_times_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: prayer_times
+      MYSQL_USER: prayer_user
+      MYSQL_PASSWORD: secret_password
+      MYSQL_ROOT_PASSWORD: root_secret_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - prayer_net
+
+networks:
+  prayer_net:
+    driver: bridge
+
+volumes:
+  redis_data:
+  mysql_data:

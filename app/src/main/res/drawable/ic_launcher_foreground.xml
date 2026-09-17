@@ -1,0 +1,25 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Beautiful Golden Islamic Crescent and Star with Book / Minaret motif -->
+    <group
+        android:scaleX="0.75"
+        android:scaleY="0.75"
+        android:translateX="13.5"
+        android:translateY="13.5">
+        <!-- Crescent Moon -->
+        <path
+            android:fillColor="#F6D061"
+            android:pathData="M64,28 C56.5,28 49.5,31 44.5,36 C39.5,41 36.5,48 36.5,55.5 C36.5,63 39.5,70 44.5,75 C49.5,80 56.5,83 64,83 C66.8,83 69.5,82.4 72,81.3 C61.8,78.5 54.2,69.2 54.2,55.5 C54.2,41.8 61.8,32.5 72,29.7 C69.5,28.6 66.8,28 64,28 Z" />
+        <!-- Eight-pointed Star -->
+        <path
+            android:fillColor="#FFE898"
+            android:pathData="M68,44 L70.5,49.5 L76.5,50 L72,54 L73.5,60 L68,57 L62.5,60 L64,54 L59.5,50 L65.5,49.5 Z" />
+        <!-- Open Quran Book base -->
+        <path
+            android:fillColor="#E2B743"
+            android:pathData="M38,76 C44,73 50,73.5 54,76 C58,73.5 64,73 70,76 L69,79 C63,76 58,76.5 54,79 C50,76.5 45,76 39,79 Z" />
+    </group>
+</vector>

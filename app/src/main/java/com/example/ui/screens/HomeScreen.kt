@@ -370,6 +370,15 @@ fun HomeScreen(
                 }
             }
 
+            // 7. AdMob Banner Placement (إعلان البانر في أسفل الشاشة الرئيسية)
+            item {
+                com.example.ads.AdMobBannerView(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                )
+            }
+
             item {
                 Spacer(modifier = Modifier.height(16.dp))
             }

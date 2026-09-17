@@ -295,6 +295,13 @@ fun DhikrDetailScreen(
                         Text("التالي")
                     }
                 }
+
+                // AdMob Banner Placement (إعلان البانر في شاشة الأذكار)
+                com.example.ads.AdMobBannerView(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp)
+                )
             }
         }
     }

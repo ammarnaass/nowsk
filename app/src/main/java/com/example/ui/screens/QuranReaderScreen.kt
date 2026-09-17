@@ -169,6 +169,15 @@ fun QuranReaderScreen(
                     }
                 )
             }
+
+            // AdMob Banner Placement at the conclusion of the Surah
+            item {
+                com.example.ads.AdMobBannerView(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp)
+                )
+            }
         }
     }
 

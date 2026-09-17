@@ -186,6 +186,13 @@ fun TasbeehScreen(
                     }
                 }
             }
+
+            // AdMob Banner Placement (إعلان البانر أسفل المسبحة)
+            com.example.ads.AdMobBannerView(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+            )
         }
     }
 

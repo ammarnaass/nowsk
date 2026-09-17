@@ -91,6 +91,15 @@ fun MoreScreen(
                     }
                 }
             }
+
+            // AdMob Banner Placement (إعلان البانر في شاشة المزيد)
+            item {
+                com.example.ads.AdMobBannerView(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                )
+            }
         }
     }
 }

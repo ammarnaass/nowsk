@@ -82,7 +82,8 @@ class MainActivity : ComponentActivity() {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                     if (!uiState.isOnboardingCompleted) {
                         OnboardingScreen(
-                            onFinishOnboarding = { viewModel.completeOnboarding() }
+                            onFinishOnboarding = { viewModel.completeOnboarding() },
+                            onGpsDetected = { lat, lon -> viewModel.setGpsLocation(lat, lon) }
                         )
                     } else {
                         NusakkirMainApp(

@@ -1,4 +1,25 @@
 <resources>
     <string name="app_name">نسكّر</string>
     <string name="tagline">صلاتك، ذكرك، يومك</string>
+
+    <!-- Onboarding & Permissions -->
+    <string name="onboarding_skip">تخطي</string>
+    <string name="onboarding_next">التالي</string>
+    <string name="onboarding_start">ابدأ الآن</string>
+    <string name="onboarding_title_1">مواقيت الصلاة الدقيقة</string>
+    <string name="onboarding_desc_1">حساب دقيق لمواقيت الصلوات الخمس والشروق حسب موقعك الجغرافي مع التنبيه بالأذان الشريف.</string>
+    <string name="onboarding_title_2">القرآن الكريم والأذكار</string>
+    <string name="onboarding_desc_2">تلاوة وتدبر السور والآيات، ومتابعة أذكار الصباح والمساء وأدعية اليوم والليلة بسهولة وسكينة.</string>
+    <string name="onboarding_title_3">القبلة والتسبيح الذكي</string>
+    <string name="onboarding_desc_3">بوصلة دقيقة لتحديد اتجاه الكعبة المشرفة في أي مكان، وسبحة رقمية ذكية مع ردود فعل لمسية.</string>
+    <string name="onboarding_title_4">تخصيص التجربة والأذونات</string>
+    <string name="onboarding_desc_4">نحتاج إذن الموقع لحساب أوقات الصلاة والقبلة، وإذن التنبيهات لإسماعك الأذان وتذكيرك بالأذكار.</string>
+    
+    <string name="perm_location_title">تحديد الموقع الجغرافي</string>
+    <string name="perm_location_desc">لحساب مواقيت الصلاة بدقة فلكية حسب مدينتك وضبط مؤشر القبلة.</string>
+    <string name="perm_notification_title">التنبيهات والأذان</string>
+    <string name="perm_notification_desc">لإعلامك بدخول وقت الصلاة وتشغيل صوت الأذان والتذكير بأذكار اليوم.</string>
+    <string name="perm_granted">تم التفعيل</string>
+    <string name="perm_request">تفعيل الآن</string>
+    <string name="perm_privacy_note">خصوصيتك أولويتنا: لا يتم إرسال أو تخزين موقعك خارج جهازك مطلقاً.</string>
 </resources>

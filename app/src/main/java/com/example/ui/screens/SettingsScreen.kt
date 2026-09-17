@@ -417,6 +417,87 @@ fun SettingsScreen(
                     }
                 }
             }
+
+            // Section 4: AdMob Advertising Placements (أماكن إعلانات AdMob)
+            item {
+                Text(
+                    text = "إعلانات AdMob (أماكن الإعلانات)",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "تم دمج مواضع إعلانات Google AdMob الرسمية بالأكواد والوحدات الاختبارية:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Test Interstitial Ad Button
+                        val activity = context as? android.app.Activity
+                        OutlinedButton(
+                            onClick = {
+                                if (activity != null) {
+                                    com.example.ads.AdMobManager.showInterstitial(activity) {
+                                        snackbarMessage = "تم إغلاق الإعلان البيني (Interstitial Ad)"
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.AdsClick, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("تجربة إعلان بيني (Interstitial Ad)")
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Test Rewarded Ad Button
+                        OutlinedButton(
+                            onClick = {
+                                if (activity != null) {
+                                    com.example.ads.AdMobManager.showRewarded(
+                                        activity = activity,
+                                        onUserEarnedReward = { amount, type ->
+                                            snackbarMessage = "تم الحصول على المكافأة: $amount $type"
+                                        },
+                                        onAdDismissed = {
+                                            if (snackbarMessage == null) {
+                                                snackbarMessage = "تم إغلاق الإعلان بمكافأة"
+                                            }
+                                        }
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.WorkspacePremium, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("تجربة إعلان بمكافأة (Rewarded Ad)")
+                        }
+                    }
+                }
+            }
+
+            // AdMob Banner Placement (إعلان البانر في شاشة الإعدادات)
+            item {
+                com.example.ads.AdMobBannerView(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                )
+            }
         }
     }
 
@@ -673,7 +754,7 @@ fun SettingsScreen(
             text = {
                 Column {
                     Text(
-                        text = "تطبيق إسلامي شامل وحديث يساعد المسلم على متابعة عباداته اليومية من مكان واحد بكل سكينة وسهولة وبدون إعلانات مزعجة.",
+                        text = "تطبيق إسلامي شامل وحديث يساعد المسلم على متابعة عباداته اليومية من مكان واحد بكل سكينة وسهولة، مع مواضع إعلانية نظيفة ومحترمة عبر AdMob لدعم استمرارية التطوير.",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(12.dp))

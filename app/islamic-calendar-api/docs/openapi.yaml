@@ -1,0 +1,321 @@
+openapi: 3.0.3
+info:
+  title: Islamic Calendar API
+  description: >
+    REST API proxy and normalization engine for Islamic and Hijri calendars,
+    supporting bi-directional date conversions, monthly calendars, holidays,
+    country/timezone configuration, and Redis caching.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8001/api/v1
+    description: Local development server
+  - url: https://api.example.com/api/v1
+    description: Production server
+
+paths:
+  /calendar/today:
+    get:
+      summary: Get today's Gregorian and Hijri dates
+      description: Returns current date representation based on specified or default timezone.
+      parameters:
+        - name: timezone
+          in: query
+          required: false
+          schema:
+            type: string
+            example: Africa/Algiers
+        - name: country
+          in: query
+          required: false
+          schema:
+            type: string
+            example: Algeria
+        - name: method
+          in: query
+          required: false
+          schema:
+            type: string
+            example: default
+        - name: adjustment
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: -2
+            maximum: 2
+            default: 0
+      responses:
+        '200':
+          description: Successful date response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodayResponse'
+
+  /calendar/gregorian-to-hijri:
+    get:
+      summary: Convert Gregorian date to Hijri
+      parameters:
+        - name: date
+          in: query
+          required: true
+          description: Gregorian date in YYYY-MM-DD format
+          schema:
+            type: string
+            format: date
+            example: '2026-09-17'
+        - name: country
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: method
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: adjustment
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Conversion successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GregorianToHijriResponse'
+        '422':
+          description: Validation error
+
+  /calendar/hijri-to-gregorian:
+    get:
+      summary: Convert Hijri date to Gregorian
+      parameters:
+        - name: date
+          in: query
+          required: true
+          description: Hijri date in DD-MM-YYYY format
+          schema:
+            type: string
+            example: '25-03-1448'
+        - name: country
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: method
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: adjustment
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Reverse conversion successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HijriToGregorianResponse'
+
+  /calendar/gregorian:
+    get:
+      summary: Full Gregorian month calendar with Hijri equivalents
+      parameters:
+        - name: month
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+            example: 9
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+            example: 2026
+        - name: country
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: method
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: adjustment
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Monthly calendar
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GregorianCalendarResponse'
+
+  /calendar/hijri:
+    get:
+      summary: Full Hijri month calendar with Gregorian equivalents
+      parameters:
+        - name: month
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+            example: 3
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+            example: 1448
+        - name: country
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: method
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: adjustment
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Hijri monthly calendar
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HijriCalendarResponse'
+
+  /calendar/holidays:
+    get:
+      summary: Islamic Holy Days for a given Hijri Year
+      parameters:
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+            example: 1448
+        - name: country
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: method
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of holidays
+
+components:
+  schemas:
+    TodayResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            today:
+              type: object
+              properties:
+                gregorian:
+                  type: object
+                hijri:
+                  type: object
+        meta:
+          type: object
+
+    GregorianToHijriResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            gregorian:
+              type: object
+            hijri:
+              type: object
+
+    HijriToGregorianResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            hijri:
+              type: object
+            gregorian:
+              type: object
+
+    GregorianCalendarResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            calendar_type:
+              type: string
+              example: gregorian
+            month:
+              type: integer
+            year:
+              type: integer
+            days:
+              type: array
+              items:
+                type: object
+
+    HijriCalendarResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            calendar_type:
+              type: string
+              example: hijri
+            month:
+              type: integer
+            year:
+              type: integer
+            days:
+              type: array
+              items:
+                type: object

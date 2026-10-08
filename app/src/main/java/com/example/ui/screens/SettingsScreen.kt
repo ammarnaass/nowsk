@@ -7,12 +7,14 @@ import android.location.Location
 import android.location.LocationManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,12 +22,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.example.data.prayer.CalculationMethod
 import com.example.data.prayer.CityLocation
 import com.example.data.prayer.CityPresets
 import com.example.data.prayer.JuristicMethod
+import com.example.data.prayer.PrayerType
 import com.example.ui.NusakkirUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,6 +52,8 @@ fun SettingsScreen(
     onPlayAdhanPreview: () -> Unit = {},
     onStopAdhan: () -> Unit = {},
     onTestNotification: () -> Unit = {},
+    onSetPrayerOffset: (PrayerType, Int) -> Unit = { _, _ -> },
+    onResetPrayerOffsets: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -54,6 +62,7 @@ fun SettingsScreen(
     var showJuristicDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
+    var showCalibrationDialog by remember { mutableStateOf(false) }
     var citySearchQuery by remember { mutableStateOf("") }
     var snackbarMessage by remember { mutableStateOf<String?>(null) }
 
@@ -84,13 +93,17 @@ fun SettingsScreen(
         }
     }
 
+    BackHandler {
+        onBackClick()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("الإعدادات", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "رجوع")
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع")
                     }
                 }
             )
@@ -227,6 +240,35 @@ fun SettingsScreen(
                                     onSyncAladhanApi()
                                 }
                             }
+                        )
+
+                        HorizontalDivider()
+
+                        // Manual Minute Offsets (معايرة دقائق الصلوات)
+                        val hasCustomOffsets = uiState.fajrOffsetMinutes != 0 ||
+                                uiState.sunriseOffsetMinutes != 0 ||
+                                uiState.dhuhrOffsetMinutes != 0 ||
+                                uiState.asrOffsetMinutes != 0 ||
+                                uiState.maghribOffsetMinutes != 0 ||
+                                uiState.ishaOffsetMinutes != 0
+
+                        ListItem(
+                            headlineContent = { Text("معايرة أوقات الصلاة يدويّاً (مطابقة أذان المسجد)") },
+                            supportingContent = {
+                                Text(
+                                    if (hasCustomOffsets) "تم تخصيص فوارق دقائق لبعض الصلوات (مطابق للمسجد)"
+                                    else "الافتراضي (0 دقيقة) • اضغط لتقديم أو تأخير أي صلاة (+/- دقائق)"
+                                )
+                            },
+                            leadingContent = {
+                                Icon(
+                                    imageVector = Icons.Default.Tune,
+                                    contentDescription = null,
+                                    tint = if (hasCustomOffsets) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            trailingContent = { Icon(Icons.Default.ChevronLeft, contentDescription = null) },
+                            modifier = Modifier.clickable { showCalibrationDialog = true }
                         )
                     }
                 }
@@ -408,7 +450,7 @@ fun SettingsScreen(
                         )
                         HorizontalDivider()
                         ListItem(
-                            headlineContent = { Text("عن تطبيق نسكّر") },
+                            headlineContent = { Text("عن تطبيق نسك إسلامي") },
                             supportingContent = { Text("الإصدار 1.0.0 — يعمل دون اتصال بالإنترنت") },
                             leadingContent = { Icon(Icons.Default.Info, contentDescription = null) },
                             trailingContent = { Icon(Icons.Default.ChevronLeft, contentDescription = null) },
@@ -508,9 +550,12 @@ fun SettingsScreen(
             if (citySearchQuery.isBlank()) {
                 allPlaces
             } else {
+                val cleanQ = citySearchQuery.trim().lowercase(java.util.Locale.ROOT)
                 allPlaces.filter {
-                    it.nameAr.contains(citySearchQuery, ignoreCase = true) ||
-                    it.countryAr.contains(citySearchQuery, ignoreCase = true)
+                    it.nameAr.contains(cleanQ, ignoreCase = true) ||
+                    it.countryAr.contains(cleanQ, ignoreCase = true) ||
+                    it.nameEn.contains(cleanQ, ignoreCase = true) ||
+                    (it.wilayaCode > 0 && it.wilayaCode.toString() == cleanQ.trimStart('0'))
                 }
             }
         }
@@ -520,7 +565,7 @@ fun SettingsScreen(
                 showCityDialog = false
                 citySearchQuery = ""
             },
-            title = { Text("اختر المدينة أو الولاية") },
+            title = { Text("اختر المدينة أو الولاية (58 ولاية)") },
             text = {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
@@ -529,7 +574,7 @@ fun SettingsScreen(
                             citySearchQuery = it
                             onSearchPlaces(it)
                         },
-                        placeholder = { Text("ابحث عن مدينة أو ولاية...") },
+                        placeholder = { Text("ابحث برقم الولاية أو اسمها...") },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                         trailingIcon = {
                             if (citySearchQuery.isNotEmpty()) {
@@ -544,9 +589,10 @@ fun SettingsScreen(
                             .padding(bottom = 12.dp)
                     )
 
-                    LazyColumn(modifier = Modifier.height(300.dp)) {
+                    LazyColumn(modifier = Modifier.height(340.dp)) {
                         items(filteredPlaces) { city ->
-                            val isSelected = city.nameAr == uiState.selectedCity.nameAr
+                            val isSelected = city.nameAr == uiState.selectedCity.nameAr ||
+                                (city.wilayaCode > 0 && city.wilayaCode == uiState.selectedCity.wilayaCode)
                             ListItem(
                                 headlineContent = {
                                     Text(
@@ -554,6 +600,23 @@ fun SettingsScreen(
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                     )
+                                },
+                                supportingContent = {
+                                    val coordsText = "${String.format(java.util.Locale.US, "%.4f", city.latitude)}°, ${String.format(java.util.Locale.US, "%.4f", city.longitude)}°"
+                                    Text(
+                                        text = if (city.nameEn.isNotEmpty()) "${city.nameEn} • $coordsText" else coordsText,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.outline
+                                    )
+                                },
+                                trailingContent = {
+                                    if (isSelected) {
+                                        Icon(
+                                            imageVector = Icons.Default.CheckCircle,
+                                            contentDescription = "محدد",
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
                                 },
                                 modifier = Modifier.clickable {
                                     onCitySelected(city)
@@ -750,7 +813,7 @@ fun SettingsScreen(
     if (showAboutDialog) {
         AlertDialog(
             onDismissRequest = { showAboutDialog = false },
-            title = { Text("عن تطبيق نسكّر") },
+            title = { Text("عن تطبيق نسك إسلامي") },
             text = {
                 Column {
                     Text(
@@ -771,5 +834,126 @@ fun SettingsScreen(
                 }
             }
         )
+    }
+
+    // Manual Prayer Minute Calibration Dialog
+    if (showCalibrationDialog) {
+        AlertDialog(
+            onDismissRequest = { showCalibrationDialog = false },
+            title = {
+                Text(
+                    text = "معايرة أوقات الصلاة يدويّاً",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = "يمكنك تقديم أو تأخير أي صلاة ببضع دقائق لمطابقة الأذان في مسجد حيك بدقة:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    PrayerOffsetRow(
+                        name = "الفجر",
+                        offset = uiState.fajrOffsetMinutes,
+                        onOffsetChange = { onSetPrayerOffset(PrayerType.FAJR, it) }
+                    )
+                    PrayerOffsetRow(
+                        name = "الشروق",
+                        offset = uiState.sunriseOffsetMinutes,
+                        onOffsetChange = { onSetPrayerOffset(PrayerType.SUNRISE, it) }
+                    )
+                    PrayerOffsetRow(
+                        name = "الظهر",
+                        offset = uiState.dhuhrOffsetMinutes,
+                        onOffsetChange = { onSetPrayerOffset(PrayerType.DHUHR, it) }
+                    )
+                    PrayerOffsetRow(
+                        name = "العصر",
+                        offset = uiState.asrOffsetMinutes,
+                        onOffsetChange = { onSetPrayerOffset(PrayerType.ASR, it) }
+                    )
+                    PrayerOffsetRow(
+                        name = "المغرب",
+                        offset = uiState.maghribOffsetMinutes,
+                        onOffsetChange = { onSetPrayerOffset(PrayerType.MAGHRIB, it) }
+                    )
+                    PrayerOffsetRow(
+                        name = "العشاء",
+                        offset = uiState.ishaOffsetMinutes,
+                        onOffsetChange = { onSetPrayerOffset(PrayerType.ISHA, it) }
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    onResetPrayerOffsets()
+                }) {
+                    Text("إعادة ضبط (0)")
+                }
+            },
+            confirmButton = {
+                Button(onClick = { showCalibrationDialog = false }) {
+                    Text("حفظ وإغلاق")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun PrayerOffsetRow(
+    name: String,
+    offset: Int,
+    onOffsetChange: (Int) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = name,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.width(60.dp)
+        )
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(
+                onClick = { onOffsetChange(offset - 1) },
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(Icons.Default.Remove, contentDescription = "إنقاص دقيقة")
+            }
+
+            Text(
+                text = when {
+                    offset > 0 -> "+$offset د"
+                    offset < 0 -> "$offset د"
+                    else -> "0 د"
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (offset != 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.width(60.dp),
+                textAlign = TextAlign.Center
+            )
+
+            IconButton(
+                onClick = { onOffsetChange(offset + 1) },
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "زيادة دقيقة")
+            }
+        }
     }
 }

@@ -3,8 +3,11 @@ package com.example.ui.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,9 +30,56 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.prayer.PrayerSchedule
 import com.example.data.prayer.PrayerType
-import com.example.ui.theme.GoldAccent
-import com.example.ui.theme.SoftGold
+import com.example.ui.theme.*
 
+/**
+ * Islamic Andalusian Ornamental Divider with 8-pointed star (۞) and gold hairline gradients
+ */
+@Composable
+fun IslamicMotifDivider(
+    modifier: Modifier = Modifier,
+    starSymbol: String = "۞"
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(1.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(Color.Transparent, GoldAccent.copy(alpha = 0.5f))
+                    )
+                )
+        )
+        Text(
+            text = " ❖ $starSymbol ❖ ",
+            color = GoldAccent,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 8.dp)
+        )
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(1.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(GoldAccent.copy(alpha = 0.5f), Color.Transparent)
+                    )
+                )
+        )
+    }
+}
+
+/**
+ * Modern Islamic App Header with Regal Emerald, Gold Location Chip, and Hijri Crescent Badge
+ */
 @Composable
 fun AppHeader(
     cityName: String,
@@ -43,98 +93,143 @@ fun AppHeader(
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp
+        tonalElevation = 3.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = 16.dp, vertical = 10.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { onLocationClick() }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "نسكّر",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
+                // Brand and Location
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onLocationClick() }
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "نُسُك",
+                            style = IslamicDisplayTitle.copy(fontSize = 26.sp),
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "الإسلامي",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = GoldAccent
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        // Gilded Location Chip
+                        Surface(
+                            color = GoldAccent.copy(alpha = 0.12f),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.4f))
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.LocationOn,
+                                    contentDescription = "الموقع",
+                                    tint = GoldAccent,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = cityName,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.ArrowDropDown,
+                                    contentDescription = "تغيير المدينة",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Date Pill with Hijri Moon
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "🌙 $hijriDateText",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "•  $gregorianDateText",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                // Quick Action Buttons (Search & Settings)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Surface(
-                        color = GoldAccent.copy(alpha = 0.2f),
-                        shape = RoundedCornerShape(8.dp)
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        IconButton(
+                            onClick = onSearchClick,
+                            modifier = Modifier
+                                .size(38.dp)
+                                .testTag("btn_header_search")
                         ) {
                             Icon(
-                                imageVector = Icons.Default.LocationOn,
-                                contentDescription = "الموقع",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(3.dp))
-                            Text(
-                                text = cityName,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Icon(
-                                imageVector = Icons.Default.ArrowDropDown,
-                                contentDescription = "تغيير المدينة",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(16.dp)
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "بحث",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
-                }
-                Spacer(modifier = Modifier.height(3.dp))
-                Text(
-                    text = hijriDateText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = gregorianDateText,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
 
-            Row {
-                IconButton(
-                    onClick = onSearchClick,
-                    modifier = Modifier.testTag("btn_header_search")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "بحث",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                IconButton(
-                    onClick = onSettingsClick,
-                    modifier = Modifier.testTag("btn_header_settings")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "الإعدادات",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                    ) {
+                        IconButton(
+                            onClick = onSettingsClick,
+                            modifier = Modifier
+                                .size(38.dp)
+                                .testTag("btn_header_settings")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "الإعدادات",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
     }
 }
 
+/**
+ * Architectural Mihrab Hero Card for the Next Prayer and Live Countdown
+ */
 @Composable
 fun NextPrayerCountdownCard(
     schedule: PrayerSchedule?,
@@ -148,11 +243,18 @@ fun NextPrayerCountdownCard(
         modifier = modifier
             .fillMaxWidth()
             .testTag("card_next_prayer"),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primary
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp, bottomStart = 22.dp, bottomEnd = 22.dp),
+        border = BorderStroke(
+            1.2.dp,
+            Brush.linearGradient(
+                listOf(
+                    GoldAccent.copy(alpha = 0.6f),
+                    GoldAccent.copy(alpha = 0.15f),
+                    GoldAccent.copy(alpha = 0.5f)
+                )
+            )
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Box(
             modifier = Modifier
@@ -160,38 +262,46 @@ fun NextPrayerCountdownCard(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            MaterialTheme.colorScheme.primary,
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+                            MihrabGreenTop,
+                            MihrabGreenBottom
                         )
                     )
                 )
                 .clickable { onDetailsClick() }
-                .padding(20.dp)
+                .padding(horizontal = 20.dp, vertical = 22.dp)
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Top Header inside Mihrab Card
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Surface(
-                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.15f),
-                        shape = RoundedCornerShape(12.dp)
+                        color = GoldAccent.copy(alpha = 0.22f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.4f))
                     ) {
-                        Text(
-                            text = "الصلاة القادمة",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                        ) {
+                            Text(
+                                text = "۞  الصلاة القادمة",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = GoldAccentBright,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
 
                     Surface(
-                        color = GoldAccent.copy(alpha = 0.25f),
-                        shape = RoundedCornerShape(12.dp)
+                        color = Color.Black.copy(alpha = 0.25f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.25f))
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -203,107 +313,215 @@ fun NextPrayerCountdownCard(
                                 tint = GoldAccent,
                                 modifier = Modifier.size(14.dp)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = nextPrayer?.timeFormatted ?: "--:--",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                fontWeight = FontWeight.Bold
+                                color = Color.White,
+                                fontWeight = FontWeight.ExtraBold
                             )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(18.dp))
 
+                // Prayer Name in Regal Arabic Calligraphy
                 Text(
                     text = nextPrayer?.type?.arabicName ?: "جاري الحساب...",
-                    style = MaterialTheme.typography.displayLarge,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.onPrimary
+                    style = IslamicDisplayTitle.copy(fontSize = 38.sp),
+                    color = Color.White,
+                    textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "متبقي على أذان ${nextPrayer?.type?.arabicName ?: ""}",
+                    text = "متبقي على رفع الأذان المبارك",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
+                    color = SoftGold.copy(alpha = 0.85f)
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
+                // Glassmorphic Countdown Box
                 Surface(
-                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f),
-                    shape = RoundedCornerShape(16.dp)
+                    color = Color(0xFF041C14).copy(alpha = 0.75f),
+                    shape = RoundedCornerShape(18.dp),
+                    border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.45f))
                 ) {
                     Text(
                         text = countdownString,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                        style = PrayerCountdownDigits,
+                        color = GoldAccentBright,
+                        modifier = Modifier.padding(horizontal = 26.dp, vertical = 10.dp)
                     )
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // 5-Prayers Daily Mini-Timeline Bar
+                if (schedule != null && schedule.prayers.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.Black.copy(alpha = 0.2f))
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceAround,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        schedule.prayers.forEach { prayer ->
+                            val isCurrentNext = prayer.isNext
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (isCurrentNext) {
+                                        Text(
+                                            text = "•",
+                                            color = GoldAccentBright,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Spacer(modifier = Modifier.width(2.dp))
+                                    }
+                                    Text(
+                                        text = prayer.type.arabicName,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = if (isCurrentNext) FontWeight.ExtraBold else FontWeight.Normal,
+                                        color = if (isCurrentNext) GoldAccentBright else Color.White.copy(alpha = 0.65f)
+                                    )
+                                }
+                                Text(
+                                    text = prayer.timeFormatted,
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                    fontWeight = if (isCurrentNext) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isCurrentNext) Color.White else Color.White.copy(alpha = 0.5f)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 }
 
+/**
+ * Modern Islamic Prayer Niches Card (خمس كوات محرابية لمواقيت الصلوات اليومية)
+ */
 @Composable
 fun PrayerTimeRowCard(
     schedule: PrayerSchedule?,
     modifier: Modifier = Modifier
 ) {
     if (schedule == null) return
+    val isDark = isSystemInDarkTheme()
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "مواقيت صلوات اليوم",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.AccessTime,
+                        contentDescription = null,
+                        tint = GoldAccent,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "مواقيت صلوات اليوم",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                Text(
+                    text = "التوقيت المحلي الرسمي",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // 5 Arched Niches side-by-side
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 schedule.prayers.forEach { prayer ->
                     val isNext = prayer.isNext
-                    val itemBg = if (isNext) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
-                    val textColor = if (isNext) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-                    val labelColor = if (isNext) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    val nicheBg = if (isNext) {
+                        MihrabGreenTop
+                    } else if (isDark) {
+                        PrayerNicheBgDark
+                    } else {
+                        PrayerNicheBgLight
+                    }
 
-                    Column(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(itemBg)
-                            .padding(horizontal = 8.dp, vertical = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    val textColor = if (isNext) Color.White else MaterialTheme.colorScheme.onSurface
+                    val labelColor = if (isNext) GoldAccentBright else MaterialTheme.colorScheme.onSurfaceVariant
+                    val borderStroke = if (isNext) {
+                        BorderStroke(1.5.dp, GoldAccent)
+                    } else {
+                        BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+                    }
+
+                    Surface(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 10.dp, bottomEnd = 10.dp),
+                        color = nicheBg,
+                        border = borderStroke,
+                        shadowElevation = if (isNext) 4.dp else 0.dp
                     ) {
-                        Text(
-                            text = prayer.type.arabicName,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (isNext) FontWeight.Bold else FontWeight.Normal,
-                            color = labelColor
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = prayer.timeFormatted,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = if (isNext) FontWeight.ExtraBold else FontWeight.Medium,
-                            color = textColor
-                        )
+                        Column(
+                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 2.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            if (isNext) {
+                                Text(
+                                    text = "۞",
+                                    fontSize = 10.sp,
+                                    color = GoldAccentBright,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            } else {
+                                Spacer(modifier = Modifier.height(14.dp))
+                            }
+
+                            Text(
+                                text = prayer.type.arabicName,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (isNext) FontWeight.Bold else FontWeight.SemiBold,
+                                color = labelColor,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Text(
+                                text = prayer.timeFormatted,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = if (isNext) FontWeight.ExtraBold else FontWeight.SemiBold,
+                                color = textColor,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
             }
@@ -311,6 +529,9 @@ fun PrayerTimeRowCard(
     }
 }
 
+/**
+ * Modern Islamic Quick Action Squircle Button with Gilded Rim
+ */
 @Composable
 fun QuickActionButton(
     title: String,
@@ -324,27 +545,28 @@ fun QuickActionButton(
         modifier = modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.15f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier.padding(vertical = 14.dp, horizontal = 8.dp),
+            modifier = Modifier.padding(vertical = 16.dp, horizontal = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(46.dp)
                     .clip(CircleShape)
-                    .background(contentColor.copy(alpha = 0.15f)),
+                    .background(contentColor.copy(alpha = 0.12f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = title,
                     tint = contentColor,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -361,6 +583,9 @@ fun QuickActionButton(
     }
 }
 
+/**
+ * Daily Spiritual Progress Card with Emerald and Gold Indicators
+ */
 @Composable
 fun DailyProgressCard(
     isMorningDone: Boolean,
@@ -376,26 +601,36 @@ fun DailyProgressCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(18.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = GoldAccent,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "وردك اليوم",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
                 Text(
-                    text = "وردك اليوم",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "متابعة العبادات اليومية",
+                    text = "متابعة العبادات والسنن",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -403,6 +638,7 @@ fun DailyProgressCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
+            // Morning & Evening Adhkar Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -412,25 +648,37 @@ fun DailyProgressCard(
                     modifier = Modifier
                         .weight(1f)
                         .clickable { onMorningClick() },
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (isMorningDone) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                    shape = RoundedCornerShape(14.dp),
+                    color = if (isMorningDone) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                    border = BorderStroke(
+                        1.dp,
+                        if (isMorningDone) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else Color.Transparent
+                    )
                 ) {
                     Row(
-                        modifier = Modifier.padding(10.dp),
+                        modifier = Modifier.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = if (isMorningDone) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle,
                             contentDescription = null,
                             tint = if (isMorningDone) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(22.dp)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "أذكار الصباح",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                text = "أذكار الصباح",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isMorningDone) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = if (isMorningDone) "تمت بحمد الله" else "اضغط للإتمام",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                color = if (isMorningDone) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
 
@@ -439,31 +687,44 @@ fun DailyProgressCard(
                     modifier = Modifier
                         .weight(1f)
                         .clickable { onEveningClick() },
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (isEveningDone) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                    shape = RoundedCornerShape(14.dp),
+                    color = if (isEveningDone) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                    border = BorderStroke(
+                        1.dp,
+                        if (isEveningDone) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else Color.Transparent
+                    )
                 ) {
                     Row(
-                        modifier = Modifier.padding(10.dp),
+                        modifier = Modifier.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = if (isEveningDone) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle,
                             contentDescription = null,
                             tint = if (isEveningDone) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(22.dp)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "أذكار المساء",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                text = "أذكار المساء",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isEveningDone) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = if (isEveningDone) "تمت بحمد الله" else "اضغط للإتمام",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                color = if (isEveningDone) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
 
+            // Quran & Tasbeeh Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -473,31 +734,41 @@ fun DailyProgressCard(
                     modifier = Modifier
                         .weight(1f)
                         .clickable { onQuranClick() },
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                 ) {
                     Row(
-                        modifier = Modifier.padding(10.dp),
+                        modifier = Modifier.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.MenuBook,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MenuBook,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
                                 text = "ورد القرآن",
                                 style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "$quranPages صفحات",
+                                text = "$quranPages صفحات اليوم",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.ExtraBold
                             )
                         }
                     }
@@ -508,31 +779,41 @@ fun DailyProgressCard(
                     modifier = Modifier
                         .weight(1f)
                         .clickable { onTasbeehClick() },
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                 ) {
                     Row(
-                        modifier = Modifier.padding(10.dp),
+                        modifier = Modifier.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Fingerprint,
-                            contentDescription = null,
-                            tint = GoldAccent,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(GoldAccent.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Fingerprint,
+                                contentDescription = null,
+                                tint = GoldAccent,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
                                 text = "التسبيح",
                                 style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = "$tasbeehCount / $tasbeehTarget",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontWeight = FontWeight.Bold
+                                color = GoldAccentDark,
+                                fontWeight = FontWeight.ExtraBold
                             )
                         }
                     }
@@ -541,3 +822,164 @@ fun DailyProgressCard(
         }
     }
 }
+
+/**
+ * Islamic Calligraphy Spiritual Ayah Card
+ */
+@Composable
+fun SpiritualAyahCard(
+    modifier: Modifier = Modifier,
+    ayahText: String = "﴿أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ﴾",
+    surahInfo: String = "سورة الرعد: الآية 28"
+) {
+    val isDark = isSystemInDarkTheme()
+    val bgColor = if (isDark) Color(0xFF14241B) else SoftGoldParchment
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = bgColor),
+        border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.35f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "۞ قبس إيماني ۞",
+                style = MaterialTheme.typography.labelSmall,
+                color = GoldAccentDark,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = ayahText,
+                style = IslamicAyahQuote.copy(fontSize = 22.sp),
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = surahInfo,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+data class IslamicNavTab(
+    val route: String,
+    val title: String,
+    val selectedIcon: ImageVector,
+    val unselectedIcon: ImageVector,
+    val tag: String
+)
+
+/**
+ * Modern Floating Luxury Islamic Dock Navigation Bar
+ */
+@Composable
+fun IslamicBottomNavigationBar(
+    currentRoute: String,
+    onTabSelected: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isDark = isSystemInDarkTheme()
+    val tabs = listOf(
+        IslamicNavTab("home", "الرئيسية", Icons.Default.Home, Icons.Outlined.Home, "nav_item_home"),
+        IslamicNavTab("quran", "القرآن", Icons.Default.MenuBook, Icons.Outlined.MenuBook, "nav_item_quran"),
+        IslamicNavTab("adhkar", "الأذكار", Icons.Default.WbSunny, Icons.Outlined.WbSunny, "nav_item_adhkar"),
+        IslamicNavTab("qibla", "القبلة", Icons.Default.Explore, Icons.Outlined.Explore, "nav_item_qibla"),
+        IslamicNavTab("more", "المزيد", Icons.Default.MoreHoriz, Icons.Outlined.MoreHoriz, "nav_item_more")
+    )
+
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .testTag("bottom_nav_bar"),
+        shape = RoundedCornerShape(28.dp),
+        color = if (isDark) Color(0xFF101E17) else Color.White,
+        border = BorderStroke(
+            1.2.dp,
+            Brush.horizontalGradient(
+                listOf(
+                    GoldAccent.copy(alpha = 0.65f),
+                    GoldAccent.copy(alpha = 0.2f),
+                    GoldAccent.copy(alpha = 0.65f)
+                )
+            )
+        ),
+        shadowElevation = 12.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 6.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            tabs.forEach { tab ->
+                val isSelected = currentRoute == tab.route
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(18.dp))
+                        .clickable { onTabSelected(tab.route) }
+                        .testTag(tab.tag)
+                        .then(
+                            if (isSelected) {
+                                Modifier
+                                    .background(
+                                        Brush.verticalGradient(
+                                            listOf(
+                                                MihrabGreenTop,
+                                                MihrabGreenBottom
+                                            )
+                                        )
+                                    )
+                                    .border(
+                                        BorderStroke(1.dp, GoldAccent.copy(alpha = 0.5f)),
+                                        RoundedCornerShape(18.dp)
+                                    )
+                            } else {
+                                Modifier
+                            }
+                        )
+                        .padding(vertical = 8.dp, horizontal = 2.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isSelected) tab.selectedIcon else tab.unselectedIcon,
+                            contentDescription = tab.title,
+                            tint = if (isSelected) GoldAccentBright else if (isDark) Color(0xFFBDD2C6) else Color(0xFF1B382B),
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(modifier = Modifier.height(3.dp))
+                        Text(
+                            text = tab.title,
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                            fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Bold,
+                            color = if (isSelected) Color.White else if (isDark) Color(0xFFBDD2C6) else Color(0xFF1B382B)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+

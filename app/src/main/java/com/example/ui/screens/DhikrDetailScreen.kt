@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
@@ -14,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
@@ -48,6 +50,10 @@ fun DhikrDetailScreen(
 
     val currentItem = items.getOrElse(currentIndex) { items.firstOrNull() }
 
+    BackHandler {
+        onBackClick()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -67,7 +73,7 @@ fun DhikrDetailScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "رجوع")
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع")
                     }
                 },
                 actions = {
@@ -275,7 +281,7 @@ fun DhikrDetailScreen(
                     IconButton(onClick = {
                         val shareIntent = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, "${currentItem.title}\n\n${currentItem.text}\n\nتطبيق نسكّر")
+                            putExtra(Intent.EXTRA_TEXT, "${currentItem.title}\n\n${currentItem.text}\n\nتطبيق نسك إسلامي")
                         }
                         context.startActivity(Intent.createChooser(shareIntent, "مشاركة الذكر"))
                     }) {

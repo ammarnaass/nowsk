@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -10,7 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Today
@@ -52,7 +53,7 @@ fun CalendarScreen(
     todayHijri: HijriDate,
     todayGregorian: String,
     selectedCity: CityLocation = CityPresets.DEFAULT,
-    calculationMethod: CalculationMethod = CalculationMethod.MUSLIM_WORLD_LEAGUE,
+    calculationMethod: CalculationMethod = CalculationMethod.ALGERIA,
     juristicMethod: JuristicMethod = JuristicMethod.SHAFI,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -105,6 +106,10 @@ fun CalendarScreen(
         }
     }
 
+    BackHandler {
+        onBackClick()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -116,7 +121,7 @@ fun CalendarScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "رجوع")
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع")
                     }
                 }
             )

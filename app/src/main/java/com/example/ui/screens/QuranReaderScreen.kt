@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -46,6 +48,10 @@ fun QuranReaderScreen(
     var showFontDialog by remember { mutableStateOf(false) }
     var snackbarMessage by remember { mutableStateOf<String?>(null) }
 
+    BackHandler {
+        onBackClick()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -65,7 +71,7 @@ fun QuranReaderScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "رجوع")
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع")
                     }
                 },
                 actions = {
@@ -163,7 +169,7 @@ fun QuranReaderScreen(
                     onShareClick = {
                         val shareIntent = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, "﴿${ayah.text}﴾\n[سورة ${surah.nameAr} - الآية ${ayah.ayahNumber}]\nتطبيق نسكّر")
+                            putExtra(Intent.EXTRA_TEXT, "﴿${ayah.text}﴾\n[سورة ${surah.nameAr} - الآية ${ayah.ayahNumber}]\nتطبيق نسك إسلامي")
                         }
                         context.startActivity(Intent.createChooser(shareIntent, "مشاركة الآية"))
                     }

@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Fingerprint
@@ -34,6 +35,7 @@ fun TasbeehScreen(
     onReset: (Long) -> Unit,
     onAddCustom: (String, Int) -> Unit,
     onDeleteCustom: (Long) -> Unit,
+    onBackClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var selectedId by remember { mutableLongStateOf(0L) }
@@ -56,6 +58,16 @@ fun TasbeehScreen(
                         text = "المسبحة الإلكترونية",
                         fontWeight = FontWeight.Bold
                     )
+                },
+                navigationIcon = {
+                    if (onBackClick != null) {
+                        IconButton(onClick = onBackClick) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "رجوع"
+                            )
+                        }
+                    }
                 },
                 actions = {
                     IconButton(onClick = { showAddDialog = true }) {

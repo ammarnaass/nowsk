@@ -103,12 +103,12 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
     companion object {
         private const val TAG = "PrayerAlarmReceiver"
 
-        const val ACTION_PRAYER_ALARM = "com.example.action.PRAYER_ALARM"
-        const val ACTION_PRE_PRAYER_ALARM = "com.example.action.PRE_PRAYER_ALARM"
-        const val ACTION_STOP_ADHAN = "com.example.action.STOP_ADHAN"
-        const val ACTION_TEST_ADHAN = "com.example.action.TEST_ADHAN"
-        const val ACTION_ADHKAR_MORNING = "com.example.action.ADHKAR_MORNING"
-        const val ACTION_ADHKAR_EVENING = "com.example.action.ADHKAR_EVENING"
+        const val ACTION_PRAYER_ALARM = "com.nusakkir.islamic.action.PRAYER_ALARM"
+        const val ACTION_PRE_PRAYER_ALARM = "com.nusakkir.islamic.action.PRE_PRAYER_ALARM"
+        const val ACTION_STOP_ADHAN = "com.nusakkir.islamic.action.STOP_ADHAN"
+        const val ACTION_TEST_ADHAN = "com.nusakkir.islamic.action.TEST_ADHAN"
+        const val ACTION_ADHKAR_MORNING = "com.nusakkir.islamic.action.ADHKAR_MORNING"
+        const val ACTION_ADHKAR_EVENING = "com.nusakkir.islamic.action.ADHKAR_EVENING"
 
         const val EXTRA_PRAYER_NAME = "extra_prayer_name"
         const val EXTRA_PRAYER_KEY = "extra_prayer_key"

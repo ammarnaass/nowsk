@@ -1,5 +1,5 @@
 {
-  "name": "نسكّر",
+  "name": "نسك إسلامي",
   "description": "تطبيق إسلامي شامل لمواقيت الصلاة، الأذكار، القرآن الكريم، القبلة، والتسبيح",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

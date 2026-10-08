@@ -8,6 +8,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 
+import kotlinx.coroutines.launch
+
 class NusakkirApplication : Application() {
 
     val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -33,5 +35,8 @@ class NusakkirApplication : Application() {
         super.onCreate()
         instance = this
         com.example.ads.AdManager.initialize(this)
+        applicationScope.launch {
+            com.example.data.quran.MushafRepository.initialize(this@NusakkirApplication)
+        }
     }
 }

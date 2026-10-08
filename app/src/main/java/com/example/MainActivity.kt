@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.LayoutDirection
@@ -31,8 +33,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.adhkar.AdhkarCategory
 import com.example.data.adhkar.AdhkarRepository
+import com.example.data.quran.MushafRepository
 import com.example.ui.MainViewModel
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.dp
+import com.example.ui.components.IslamicBottomNavigationBar
 import com.example.ui.screens.*
+import com.example.ui.theme.GoldAccent
 import com.example.ui.theme.NusakkirTheme
 import com.example.util.NusakkirNotificationHelper
 
@@ -92,6 +101,7 @@ class MainActivity : ComponentActivity() {
                             quranProgress = quranProgress,
                             tasbeehList = tasbeehList,
                             favoritesList = favoritesList,
+                            isDarkTheme = isDarkTheme,
                             initialRoute = targetRoute ?: "home"
                         )
                     }
@@ -108,9 +118,52 @@ fun NusakkirMainApp(
     quranProgress: com.example.data.local.entity.QuranProgressEntity?,
     tasbeehList: List<com.example.data.local.entity.TasbeehEntity>,
     favoritesList: List<com.example.data.local.entity.FavoriteEntity>,
+    isDarkTheme: Boolean = false,
     initialRoute: String = "home"
 ) {
     var currentRoute by remember { mutableStateOf(initialRoute) }
+    val backStack = remember { mutableStateListOf<String>() }
+    val context = LocalContext.current
+    var lastBackPressTime by remember { mutableLongStateOf(0L) }
+
+    var selectedMushafPage by remember {
+        mutableIntStateOf(quranProgress?.ayahNumber?.coerceIn(1, 604) ?: 1)
+    }
+
+    // Comprehensive navigation handlers
+    val navigateTo: (String) -> Unit = { route ->
+        if (currentRoute != route) {
+            // Main bottom tabs clear the stack to avoid deep tab loops
+            if (route in listOf("home", "quran", "adhkar", "qibla", "more")) {
+                backStack.clear()
+            } else {
+                backStack.add(currentRoute)
+            }
+            currentRoute = route
+        }
+    }
+
+    val navigateBack: () -> Unit = {
+        if (backStack.isNotEmpty()) {
+            currentRoute = backStack.removeAt(backStack.size - 1)
+        } else if (currentRoute != "home") {
+            currentRoute = "home"
+        } else {
+            // On home screen: prompt user with double back to prevent accidental app close
+            val now = System.currentTimeMillis()
+            if (now - lastBackPressTime < 2000L) {
+                (context as? android.app.Activity)?.finish()
+            } else {
+                lastBackPressTime = now
+                android.widget.Toast.makeText(context, "اضغط مرة أخرى للخروج من التطبيق", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // Intercept hardware/gesture Android Back button across the entire app
+    BackHandler(enabled = true) {
+        navigateBack()
+    }
 
     // Bottom Navigation Bar is shown only on main tabs
     val isMainTab = currentRoute in listOf("home", "quran", "adhkar", "qibla", "more")
@@ -118,68 +171,10 @@ fun NusakkirMainApp(
     Scaffold(
         bottomBar = {
             if (isMainTab) {
-                NavigationBar(modifier = Modifier.testTag("bottom_nav_bar")) {
-                    NavigationBarItem(
-                        selected = currentRoute == "home",
-                        onClick = { currentRoute = "home" },
-                        icon = {
-                            Icon(
-                                imageVector = if (currentRoute == "home") Icons.Default.Home else Icons.Outlined.Home,
-                                contentDescription = "الرئيسية"
-                            )
-                        },
-                        label = { Text("الرئيسية") },
-                        modifier = Modifier.testTag("nav_item_home")
-                    )
-                    NavigationBarItem(
-                        selected = currentRoute == "quran",
-                        onClick = { currentRoute = "quran" },
-                        icon = {
-                            Icon(
-                                imageVector = if (currentRoute == "quran") Icons.Default.MenuBook else Icons.Outlined.MenuBook,
-                                contentDescription = "القرآن"
-                            )
-                        },
-                        label = { Text("القرآن") },
-                        modifier = Modifier.testTag("nav_item_quran")
-                    )
-                    NavigationBarItem(
-                        selected = currentRoute == "adhkar",
-                        onClick = { currentRoute = "adhkar" },
-                        icon = {
-                            Icon(
-                                imageVector = if (currentRoute == "adhkar") Icons.Default.WbSunny else Icons.Outlined.WbSunny,
-                                contentDescription = "الأذكار"
-                            )
-                        },
-                        label = { Text("الأذكار") },
-                        modifier = Modifier.testTag("nav_item_adhkar")
-                    )
-                    NavigationBarItem(
-                        selected = currentRoute == "qibla",
-                        onClick = { currentRoute = "qibla" },
-                        icon = {
-                            Icon(
-                                imageVector = if (currentRoute == "qibla") Icons.Default.Explore else Icons.Outlined.Explore,
-                                contentDescription = "القبلة"
-                            )
-                        },
-                        label = { Text("القبلة") },
-                        modifier = Modifier.testTag("nav_item_qibla")
-                    )
-                    NavigationBarItem(
-                        selected = currentRoute == "more",
-                        onClick = { currentRoute = "more" },
-                        icon = {
-                            Icon(
-                                imageVector = if (currentRoute == "more") Icons.Default.MoreHoriz else Icons.Outlined.MoreHoriz,
-                                contentDescription = "المزيد"
-                            )
-                        },
-                        label = { Text("المزيد") },
-                        modifier = Modifier.testTag("nav_item_more")
-                    )
-                }
+                IslamicBottomNavigationBar(
+                    currentRoute = currentRoute,
+                    onTabSelected = navigateTo
+                )
             }
         },
         modifier = Modifier.fillMaxSize()
@@ -194,24 +189,24 @@ fun NusakkirMainApp(
                     uiState = uiState,
                     quranProgress = quranProgress,
                     tasbeehList = tasbeehList,
-                    onPrayerDetailsClick = { currentRoute = "prayer_details" },
-                    onLocationClick = { currentRoute = "settings" },
-                    onSearchClick = { currentRoute = "search" },
-                    onSettingsClick = { currentRoute = "settings" },
-                    onNavigateToQuran = { currentRoute = "quran" },
+                    onPrayerDetailsClick = { navigateTo("prayer_details") },
+                    onLocationClick = { navigateTo("settings") },
+                    onSearchClick = { navigateTo("search") },
+                    onSettingsClick = { navigateTo("settings") },
+                    onNavigateToQuran = { navigateTo("quran") },
                     onNavigateToMorningAdhkar = {
                         val morningCat = AdhkarRepository.CATEGORIES.first { it.id == "morning" }
                         viewModel.selectAdhkarCategory(morningCat)
-                        currentRoute = "dhikr_detail"
+                        navigateTo("dhikr_detail")
                     },
                     onNavigateToEveningAdhkar = {
                         val eveningCat = AdhkarRepository.CATEGORIES.first { it.id == "evening" }
                         viewModel.selectAdhkarCategory(eveningCat)
-                        currentRoute = "dhikr_detail"
+                        navigateTo("dhikr_detail")
                     },
-                    onNavigateToQibla = { currentRoute = "qibla" },
-                    onNavigateToTasbeeh = { currentRoute = "tasbeeh" },
-                    onNavigateToDuas = { currentRoute = "duas" },
+                    onNavigateToQibla = { navigateTo("qibla") },
+                    onNavigateToTasbeeh = { navigateTo("tasbeeh") },
+                    onNavigateToDuas = { navigateTo("duas") },
                     onToggleMorningDone = { viewModel.markMorningAdhkarDone(!uiState.isMorningAdhkarDone) },
                     onToggleEveningDone = { viewModel.markEveningAdhkarDone(!uiState.isEveningAdhkarDone) },
                     onStopAdhan = { viewModel.stopAdhan() },
@@ -220,8 +215,8 @@ fun NusakkirMainApp(
 
                 "prayer_details" -> PrayerTimesDetailScreen(
                     uiState = uiState,
-                    onBackClick = { currentRoute = "home" },
-                    onOpenSettingsClick = { currentRoute = "settings" },
+                    onBackClick = navigateBack,
+                    onOpenSettingsClick = { navigateTo("settings") },
                     onTogglePreAlarm = { viewModel.toggleNotification("before_prayer", it) },
                     onRefreshFromApi = { viewModel.syncPrayerTimesFromAladhan(force = true) },
                     onTestPrayerWithAdhan = { prayerName -> viewModel.testPrayerNotification(prayerName) },
@@ -231,13 +226,27 @@ fun NusakkirMainApp(
                 "quran" -> QuranScreen(
                     quranProgress = quranProgress,
                     onSurahSelected = { surahNumber ->
-                        viewModel.selectSurah(surahNumber)
-                        currentRoute = "quran_reader"
+                        val page = MushafRepository.getPageForSurah(surahNumber)
+                        selectedMushafPage = page
+                        navigateTo("mushaf_reader")
+                    },
+                    onPageSelected = { pageNumber ->
+                        selectedMushafPage = pageNumber
+                        navigateTo("mushaf_reader")
                     },
                     onContinueReadingClick = {
-                        val surahNumber = quranProgress?.surahNumber ?: 1
-                        viewModel.selectSurah(surahNumber)
-                        currentRoute = "quran_reader"
+                        val page = quranProgress?.ayahNumber?.coerceIn(1, 604) ?: 1
+                        selectedMushafPage = page
+                        navigateTo("mushaf_reader")
+                    }
+                )
+
+                "mushaf_reader" -> MushafReaderScreen(
+                    initialPage = selectedMushafPage,
+                    isDarkTheme = isDarkTheme,
+                    onBackClick = navigateBack,
+                    onSaveBookmark = { page, surahName, surahNumber ->
+                        viewModel.saveMushafProgress(page, surahName, surahNumber)
                     }
                 )
 
@@ -246,7 +255,7 @@ fun NusakkirMainApp(
                     ayahs = uiState.currentAyahs,
                     fontSizeSp = uiState.quranFontSizeSp,
                     isFavorite = viewModel.isItemFavorite("سورة ${uiState.currentSurah.nameAr}", "quran"),
-                    onBackClick = { currentRoute = "quran" },
+                    onBackClick = navigateBack,
                     onFontSizeChange = { viewModel.setQuranFontSize(it) },
                     onToggleFavoriteSurah = {
                         viewModel.toggleFavorite(
@@ -263,7 +272,7 @@ fun NusakkirMainApp(
                 "adhkar" -> AdhkarScreen(
                     onCategorySelected = { category ->
                         viewModel.selectAdhkarCategory(category)
-                        currentRoute = "dhikr_detail"
+                        navigateTo("dhikr_detail")
                     }
                 )
 
@@ -280,7 +289,7 @@ fun NusakkirMainApp(
                         )
                     },
                     onVibrate = { viewModel.vibrateDevice(35) },
-                    onBackClick = { currentRoute = "adhkar" }
+                    onBackClick = navigateBack
                 )
 
                 "tasbeeh" -> TasbeehScreen(
@@ -288,21 +297,26 @@ fun NusakkirMainApp(
                     onIncrement = { viewModel.incrementTasbeeh(it) },
                     onReset = { viewModel.resetTasbeeh(it) },
                     onAddCustom = { title, target -> viewModel.addCustomTasbeeh(title, target) },
-                    onDeleteCustom = { viewModel.deleteTasbeeh(it) }
+                    onDeleteCustom = { viewModel.deleteTasbeeh(it) },
+                    onBackClick = navigateBack
                 )
 
                 "qibla" -> QiblaScreen(
                     uiState = uiState,
-                    onVibrate = { viewModel.vibrateDevice(50) }
+                    onVibrate = { viewModel.vibrateDevice(50) },
+                    onGpsLocationDetected = { lat, lon -> viewModel.setGpsLocation(lat, lon) },
+                    onStartCompass = { viewModel.startSensorListening() },
+                    onStopCompass = { viewModel.stopSensorListening() },
+                    onBackClick = navigateBack
                 )
 
                 "more" -> MoreScreen(
-                    onNavigateToTasbeeh = { currentRoute = "tasbeeh" },
-                    onNavigateToDuas = { currentRoute = "duas" },
-                    onNavigateToCalendar = { currentRoute = "calendar" },
-                    onNavigateToFavorites = { currentRoute = "favorites" },
-                    onNavigateToPrayers = { currentRoute = "prayer_details" },
-                    onNavigateToSettings = { currentRoute = "settings" }
+                    onNavigateToTasbeeh = { navigateTo("tasbeeh") },
+                    onNavigateToDuas = { navigateTo("duas") },
+                    onNavigateToCalendar = { navigateTo("calendar") },
+                    onNavigateToFavorites = { navigateTo("favorites") },
+                    onNavigateToPrayers = { navigateTo("prayer_details") },
+                    onNavigateToSettings = { navigateTo("settings") }
                 )
 
                 "duas" -> DuasScreen(
@@ -315,7 +329,7 @@ fun NusakkirMainApp(
                             subtitle = dua.source
                         )
                     },
-                    onBackClick = { currentRoute = "more" }
+                    onBackClick = navigateBack
                 )
 
                 "calendar" -> CalendarScreen(
@@ -324,13 +338,13 @@ fun NusakkirMainApp(
                     selectedCity = uiState.selectedCity,
                     calculationMethod = uiState.calculationMethod,
                     juristicMethod = uiState.juristicMethod,
-                    onBackClick = { currentRoute = "more" }
+                    onBackClick = navigateBack
                 )
 
                 "favorites" -> FavoritesScreen(
                     favorites = favoritesList,
                     onRemoveFavorite = { viewModel.removeFavorite(it) },
-                    onBackClick = { currentRoute = "more" }
+                    onBackClick = navigateBack
                 )
 
                 "search" -> SearchScreen(
@@ -340,10 +354,15 @@ fun NusakkirMainApp(
                     dhikrResults = uiState.searchResultsDhikr,
                     onQueryChange = { viewModel.performSearch(it) },
                     onSurahClick = { surahNumber ->
-                        viewModel.selectSurah(surahNumber)
-                        currentRoute = "quran_reader"
+                        val page = MushafRepository.getPageForSurah(surahNumber)
+                        selectedMushafPage = page
+                        navigateTo("mushaf_reader")
                     },
-                    onBackClick = { currentRoute = "home" }
+                    onPageClick = { pageNumber ->
+                        selectedMushafPage = pageNumber
+                        navigateTo("mushaf_reader")
+                    },
+                    onBackClick = navigateBack
                 )
 
                 "settings" -> SettingsScreen(
@@ -354,14 +373,16 @@ fun NusakkirMainApp(
                     onJuristicSelected = { viewModel.setJuristicMethod(it) },
                     onThemeSelected = { viewModel.setThemeMode(it) },
                     onToggleNotification = { type, enabled -> viewModel.toggleNotification(type, enabled) },
-                    onBackClick = { currentRoute = "home" },
+                    onBackClick = navigateBack,
                     onAladhanMethodSelected = { viewModel.setAladhanMethod(it) },
                     onSyncAladhanApi = { viewModel.syncPrayerTimesFromAladhan(force = true) },
                     onSearchPlaces = { viewModel.filterPlaces(it) },
                     onToggleAdhanSound = { viewModel.toggleAdhanSound(it) },
                     onPlayAdhanPreview = { viewModel.playAdhanPreview() },
                     onStopAdhan = { viewModel.stopAdhan() },
-                    onTestNotification = { viewModel.testPrayerNotification() }
+                    onTestNotification = { viewModel.testPrayerNotification() },
+                    onSetPrayerOffset = { prayerType, offset -> viewModel.setPrayerOffset(prayerType, offset) },
+                    onResetPrayerOffsets = { viewModel.resetPrayerOffsets() }
                 )
             }
         }

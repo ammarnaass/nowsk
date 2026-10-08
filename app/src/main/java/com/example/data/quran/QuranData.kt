@@ -14,7 +14,8 @@ data class Ayah(
     val surahNumber: Int,
     val ayahNumber: Int,
     val text: String,
-    val translation: String = ""
+    val translation: String = "",
+    val pageNumber: Int = 1
 )
 
 object QuranRepository {
@@ -249,6 +250,19 @@ object QuranRepository {
 
     fun searchQuran(query: String): List<Ayah> {
         if (query.isBlank()) return emptyList()
+        val mushafHits = MushafRepository.searchPages(query, limit = 50)
+        if (mushafHits.isNotEmpty()) {
+            return mushafHits.map { hit ->
+                Ayah(
+                    surahNumber = hit.surahNumber,
+                    ayahNumber = hit.ayahNumber,
+                    text = hit.text,
+                    pageNumber = hit.pageNumber
+                )
+            }
+        }
+
+        // Fallback for immediate searches before full Mushaf preloading
         val q = query.trim().lowercase()
         val results = mutableListOf<Ayah>()
         for ((_, ayahs) in SURAH_VERSES_MAP) {

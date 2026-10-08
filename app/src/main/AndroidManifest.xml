@@ -13,6 +13,18 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" />
+
+    <!-- Compass, Accelerometer and Gyroscope hardware features (optional for broad compatibility) -->
+    <uses-feature
+        android:name="android.hardware.sensor.compass"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.sensor.accelerometer"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.sensor.gyroscope"
+        android:required="false" />
 
     <application
         android:name=".NusakkirApplication"
@@ -45,12 +57,12 @@
             android:name=".receiver.PrayerAlarmReceiver"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.example.action.PRAYER_ALARM" />
-                <action android:name="com.example.action.PRE_PRAYER_ALARM" />
-                <action android:name="com.example.action.STOP_ADHAN" />
-                <action android:name="com.example.action.TEST_ADHAN" />
-                <action android:name="com.example.action.ADHKAR_MORNING" />
-                <action android:name="com.example.action.ADHKAR_EVENING" />
+                <action android:name="com.nusakkir.islamic.action.PRAYER_ALARM" />
+                <action android:name="com.nusakkir.islamic.action.PRE_PRAYER_ALARM" />
+                <action android:name="com.nusakkir.islamic.action.STOP_ADHAN" />
+                <action android:name="com.nusakkir.islamic.action.TEST_ADHAN" />
+                <action android:name="com.nusakkir.islamic.action.ADHKAR_MORNING" />
+                <action android:name="com.nusakkir.islamic.action.ADHKAR_EVENING" />
             </intent-filter>
         </receiver>
 

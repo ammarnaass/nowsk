@@ -3,6 +3,7 @@ package com.example.ui
 import android.app.Application
 import android.content.Context
 import com.example.NusakkirApplication
+import android.hardware.GeomagneticField
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -63,7 +64,7 @@ data class NusakkirUiState(
     // Location & Calculation
     val selectedCity: CityLocation = CityPresets.DEFAULT,
     val isUsingGps: Boolean = false,
-    val calculationMethod: CalculationMethod = CalculationMethod.MUSLIM_WORLD_LEAGUE,
+    val calculationMethod: CalculationMethod = CalculationMethod.ALGERIA,
     val juristicMethod: JuristicMethod = JuristicMethod.SHAFI,
 
     // Prayer Times & Countdown
@@ -71,6 +72,14 @@ data class NusakkirUiState(
     val countdownFormatted: String = "00:00:00",
     val todayHijri: HijriDate = HijriCalendarHelper.getTodayHijriDate(),
     val todayGregorian: String = HijriCalendarHelper.formatGregorianArabic(Calendar.getInstance()),
+
+    // Manual Prayer Minute Calibration (+/- minutes)
+    val fajrOffsetMinutes: Int = 0,
+    val sunriseOffsetMinutes: Int = 0,
+    val dhuhrOffsetMinutes: Int = 0,
+    val asrOffsetMinutes: Int = 0,
+    val maghribOffsetMinutes: Int = 0,
+    val ishaOffsetMinutes: Int = 0,
 
     // Daily Progress
     val isMorningAdhkarDone: Boolean = false,
@@ -83,6 +92,13 @@ data class NusakkirUiState(
     val distanceToMakkahKm: Double = 0.0,
     val isPointedAtQibla: Boolean = false,
     val isCompassAvailable: Boolean = true,
+    val compassAccuracy: Int = SensorManager.SENSOR_STATUS_ACCURACY_HIGH,
+    val sensorTypeUsed: String = "مستشعر الدوران المتجه (جيروسكوب + تسارع + مغناطيسية)",
+    val hasGyroscope: Boolean = true,
+    val magneticDeclination: Float = 0f,
+    val pitchDegrees: Float = 0f,
+    val rollDegrees: Float = 0f,
+    val isFlatOnSurface: Boolean = true,
 
     // Active reading selections
     val currentSurah: Surah = QuranRepository.SURAHS[0],
@@ -139,13 +155,46 @@ class MainViewModel(application: Application) : AndroidViewModel(application), S
     val quranProgress: StateFlow<QuranProgressEntity?> = repository.quranProgress
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    // Sensor Manager
+    // Multi-tier Sensor Manager & Fallbacks (Gyroscope, Geomagnetic, Accelerometer + Magnetometer)
     private val sensorManager = application.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
-    private val rotationSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
-        ?: sensorManager?.getDefaultSensor(Sensor.TYPE_ORIENTATION)
+    private val rotationVectorSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+    private val geomagneticSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR)
+    private val accelerometerSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+    private val magnetometerSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+    @Suppress("DEPRECATION")
+    private val orientationSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_ORIENTATION)
+
+    private val lastAccelerometer = FloatArray(3)
+    private val lastMagnetometer = FloatArray(3)
+    private var lastAccelerometerSet = false
+    private var lastMagnetometerSet = false
+
+    private var smoothedAzimuth = 0f
+    private var hasInitialHeading = false
+    private var isSensorListening = false
 
     init {
-        _uiState.update { it.copy(isCompassAvailable = (rotationSensor != null)) }
+        val hasGyro = rotationVectorSensor != null || sensorManager?.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null
+        val isCompassAvail = rotationVectorSensor != null ||
+                geomagneticSensor != null ||
+                (accelerometerSensor != null && magnetometerSensor != null) ||
+                orientationSensor != null
+
+        val sensorTypeDescription = when {
+            rotationVectorSensor != null -> "مستشعر الدوران المتجه (جيروسكوب + تسارع + مغناطيسية)"
+            geomagneticSensor != null -> "مستشعر الدوران المغناطيسي الأرضي (Geomagnetic)"
+            accelerometerSensor != null && magnetometerSensor != null -> "دمج مقياس التسارع والمجال المغناطيسي"
+            orientationSensor != null -> "مستشعر التوجيه الكلاسيكي (Orientation)"
+            else -> "لا توجد مستشعرات بوصلة مدعومة"
+        }
+
+        _uiState.update {
+            it.copy(
+                isCompassAvailable = isCompassAvail,
+                hasGyroscope = hasGyro,
+                sensorTypeUsed = sensorTypeDescription
+            )
+        }
         loadInitialSettings()
         loadAladhanMethods()
         recalculatePrayers()
@@ -202,6 +251,63 @@ class MainViewModel(application: Application) : AndroidViewModel(application), S
             if (eveningVal != null) {
                 _uiState.update { it.copy(notifyEveningAdhkar = eveningVal.toBooleanStrictOrNull() ?: true) }
             }
+
+            // Restore Calculation Method & Juristic Method
+            val calcMethodVal = settingsDao.getSettingValue("calculation_method")
+            if (calcMethodVal != null) {
+                try {
+                    val method = CalculationMethod.valueOf(calcMethodVal)
+                    _uiState.update { it.copy(calculationMethod = method) }
+                } catch (_: Exception) {}
+            }
+            val juristicVal = settingsDao.getSettingValue("juristic_method")
+            if (juristicVal != null) {
+                try {
+                    val juristic = JuristicMethod.valueOf(juristicVal)
+                    _uiState.update { it.copy(juristicMethod = juristic) }
+                } catch (_: Exception) {}
+            }
+
+            // Restore Selected City
+            val savedCityName = settingsDao.getSettingValue("selected_city_name")
+            val savedLat = settingsDao.getSettingValue("selected_city_lat")?.toDoubleOrNull()
+            val savedLon = settingsDao.getSettingValue("selected_city_lon")?.toDoubleOrNull()
+            val savedCountry = settingsDao.getSettingValue("selected_city_country") ?: "الجزائر"
+            val savedTz = settingsDao.getSettingValue("selected_city_tz")?.toDoubleOrNull() ?: 1.0
+            val savedEn = settingsDao.getSettingValue("selected_city_en") ?: ""
+            val savedCode = settingsDao.getSettingValue("selected_city_code")?.toIntOrNull() ?: 0
+            val isUsingGps = settingsDao.getSettingValue("is_using_gps") == "true"
+
+            // Restore Manual Prayer Offsets
+            val fajrOff = settingsDao.getSettingValue("offset_fajr")?.toIntOrNull() ?: 0
+            val sunriseOff = settingsDao.getSettingValue("offset_sunrise")?.toIntOrNull() ?: 0
+            val dhuhrOff = settingsDao.getSettingValue("offset_dhuhr")?.toIntOrNull() ?: 0
+            val asrOff = settingsDao.getSettingValue("offset_asr")?.toIntOrNull() ?: 0
+            val maghribOff = settingsDao.getSettingValue("offset_maghrib")?.toIntOrNull() ?: 0
+            val ishaOff = settingsDao.getSettingValue("offset_isha")?.toIntOrNull() ?: 0
+
+            _uiState.update {
+                it.copy(
+                    fajrOffsetMinutes = fajrOff,
+                    sunriseOffsetMinutes = sunriseOff,
+                    dhuhrOffsetMinutes = dhuhrOff,
+                    asrOffsetMinutes = asrOff,
+                    maghribOffsetMinutes = maghribOff,
+                    ishaOffsetMinutes = ishaOff
+                )
+            }
+
+            if (savedCityName != null && savedLat != null && savedLon != null) {
+                val matchedCity = CityPresets.CITIES.find { it.nameAr == savedCityName || (savedCode > 0 && it.wilayaCode == savedCode) }
+                val restoredCity = matchedCity ?: CityLocation(savedCityName, savedCountry, savedLat, savedLon, savedTz, savedEn, savedCode)
+                _uiState.update {
+                    it.copy(
+                        selectedCity = restoredCity,
+                        isUsingGps = isUsingGps
+                    )
+                }
+            }
+            recalculatePrayers()
         }
     }
 
@@ -219,17 +325,51 @@ class MainViewModel(application: Application) : AndroidViewModel(application), S
                 isUsingGps = false
             )
         }
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.setSetting("selected_city_name", city.nameAr)
+            repository.setSetting("selected_city_country", city.countryAr)
+            repository.setSetting("selected_city_lat", city.latitude.toString())
+            repository.setSetting("selected_city_lon", city.longitude.toString())
+            repository.setSetting("selected_city_tz", city.timeZoneOffsetHours.toString())
+            repository.setSetting("selected_city_en", city.nameEn)
+            repository.setSetting("selected_city_code", city.wilayaCode.toString())
+            repository.setSetting("is_using_gps", "false")
+        }
         recalculatePrayers()
         syncPrayerTimesFromAladhan(force = true)
     }
 
     fun setGpsLocation(lat: Double, lon: Double, cityName: String = "موقعي الحالي") {
-        val gpsCity = CityLocation(cityName, "الموقع التلقائي", lat, lon, 1.0)
+        val nearest = CityPresets.findNearestCity(lat, lon)
+        val resolvedName = if (cityName == "موقعي الحالي" && nearest != null) {
+            "موقعي الحالي (${nearest.nameAr})"
+        } else {
+            cityName
+        }
+        val gpsCity = CityLocation(
+            nameAr = resolvedName,
+            countryAr = "الموقع التلقائي",
+            latitude = lat,
+            longitude = lon,
+            timeZoneOffsetHours = 1.0,
+            nameEn = nearest?.nameEn ?: "",
+            wilayaCode = nearest?.wilayaCode ?: 0
+        )
         _uiState.update {
             it.copy(
                 selectedCity = gpsCity,
                 isUsingGps = true
             )
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.setSetting("selected_city_name", resolvedName)
+            repository.setSetting("selected_city_country", "الموقع التلقائي")
+            repository.setSetting("selected_city_lat", lat.toString())
+            repository.setSetting("selected_city_lon", lon.toString())
+            repository.setSetting("selected_city_tz", "1.0")
+            repository.setSetting("selected_city_en", nearest?.nameEn ?: "")
+            repository.setSetting("selected_city_code", (nearest?.wilayaCode ?: 0).toString())
+            repository.setSetting("is_using_gps", "true")
         }
         recalculatePrayers()
         syncPrayerTimesFromAladhan(force = true)
@@ -264,25 +404,153 @@ class MainViewModel(application: Application) : AndroidViewModel(application), S
             )
 
             result.fold(
-                onSuccess = { schedule ->
+                onSuccess = { apiSchedule ->
+                    val manualOffsets = mapOf(
+                        PrayerType.FAJR to _uiState.value.fajrOffsetMinutes,
+                        PrayerType.SUNRISE to _uiState.value.sunriseOffsetMinutes,
+                        PrayerType.DHUHR to _uiState.value.dhuhrOffsetMinutes,
+                        PrayerType.ASR to _uiState.value.asrOffsetMinutes,
+                        PrayerType.MAGHRIB to _uiState.value.maghribOffsetMinutes,
+                        PrayerType.ISHA to _uiState.value.ishaOffsetMinutes
+                    )
+                    val finalSchedule = if (manualOffsets.values.any { it != 0 }) {
+                        PrayerTimesCalculator.calculatePrayerTimes(
+                            latitude = city.latitude,
+                            longitude = city.longitude,
+                            calendar = Calendar.getInstance(),
+                            method = _uiState.value.calculationMethod,
+                            juristic = _uiState.value.juristicMethod,
+                            manualOffsets = manualOffsets
+                        )
+                    } else {
+                        apiSchedule
+                    }
+
                     _uiState.update {
                         it.copy(
-                            prayerSchedule = schedule,
+                            prayerSchedule = finalSchedule,
                             isAladhanSyncing = false,
                             aladhanSyncSuccess = true
                         )
                     }
                     schedulePrayerAlarms()
+                    preCacheMonthlyPrayers()
                 },
                 onFailure = {
+                    // Resilient offline fallback: keep local calculations completely active and reliable!
                     _uiState.update {
                         it.copy(
                             isAladhanSyncing = false,
-                            aladhanSyncSuccess = false
+                            aladhanSyncSuccess = null
                         )
                     }
+                    recalculatePrayers()
+                    preCacheMonthlyPrayers()
                 }
             )
+        }
+    }
+
+    fun setPrayerOffset(prayerType: PrayerType, offsetMinutes: Int) {
+        val clamped = offsetMinutes.coerceIn(-30, 30)
+        when (prayerType) {
+            PrayerType.FAJR -> {
+                _uiState.update { it.copy(fajrOffsetMinutes = clamped) }
+                viewModelScope.launch(Dispatchers.IO) { repository.setSetting("offset_fajr", clamped.toString()) }
+            }
+            PrayerType.SUNRISE -> {
+                _uiState.update { it.copy(sunriseOffsetMinutes = clamped) }
+                viewModelScope.launch(Dispatchers.IO) { repository.setSetting("offset_sunrise", clamped.toString()) }
+            }
+            PrayerType.DHUHR -> {
+                _uiState.update { it.copy(dhuhrOffsetMinutes = clamped) }
+                viewModelScope.launch(Dispatchers.IO) { repository.setSetting("offset_dhuhr", clamped.toString()) }
+            }
+            PrayerType.ASR -> {
+                _uiState.update { it.copy(asrOffsetMinutes = clamped) }
+                viewModelScope.launch(Dispatchers.IO) { repository.setSetting("offset_asr", clamped.toString()) }
+            }
+            PrayerType.MAGHRIB -> {
+                _uiState.update { it.copy(maghribOffsetMinutes = clamped) }
+                viewModelScope.launch(Dispatchers.IO) { repository.setSetting("offset_maghrib", clamped.toString()) }
+            }
+            PrayerType.ISHA -> {
+                _uiState.update { it.copy(ishaOffsetMinutes = clamped) }
+                viewModelScope.launch(Dispatchers.IO) { repository.setSetting("offset_isha", clamped.toString()) }
+            }
+        }
+        recalculatePrayers()
+        preCacheMonthlyPrayers()
+    }
+
+    fun resetPrayerOffsets() {
+        _uiState.update {
+            it.copy(
+                fajrOffsetMinutes = 0,
+                sunriseOffsetMinutes = 0,
+                dhuhrOffsetMinutes = 0,
+                asrOffsetMinutes = 0,
+                maghribOffsetMinutes = 0,
+                ishaOffsetMinutes = 0
+            )
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.setSetting("offset_fajr", "0")
+            repository.setSetting("offset_sunrise", "0")
+            repository.setSetting("offset_dhuhr", "0")
+            repository.setSetting("offset_asr", "0")
+            repository.setSetting("offset_maghrib", "0")
+            repository.setSetting("offset_isha", "0")
+        }
+        recalculatePrayers()
+        preCacheMonthlyPrayers()
+    }
+
+    fun preCacheMonthlyPrayers() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val city = _uiState.value.selectedCity
+            val method = _uiState.value.calculationMethod
+            val juristic = _uiState.value.juristicMethod
+            val manualOffsets = mapOf(
+                PrayerType.FAJR to _uiState.value.fajrOffsetMinutes,
+                PrayerType.SUNRISE to _uiState.value.sunriseOffsetMinutes,
+                PrayerType.DHUHR to _uiState.value.dhuhrOffsetMinutes,
+                PrayerType.ASR to _uiState.value.asrOffsetMinutes,
+                PrayerType.MAGHRIB to _uiState.value.maghribOffsetMinutes,
+                PrayerType.ISHA to _uiState.value.ishaOffsetMinutes
+            )
+            val now = Calendar.getInstance()
+            val year = now.get(Calendar.YEAR)
+            val month = now.get(Calendar.MONTH) + 1
+            val schedules = PrayerTimesCalculator.calculateMonthlyPrayerTimes(
+                latitude = city.latitude,
+                longitude = city.longitude,
+                year = year,
+                month = month,
+                method = method,
+                juristic = juristic,
+                manualOffsets = manualOffsets
+            )
+            val entities = schedules.map { sched ->
+                PrayerTimeEntity(
+                    date = sched.dateString,
+                    cityName = city.nameAr,
+                    latitude = city.latitude,
+                    longitude = city.longitude,
+                    fajr = sched.prayers.find { it.type == PrayerType.FAJR }?.timeFormatted ?: "",
+                    sunrise = sched.prayers.find { it.type == PrayerType.SUNRISE }?.timeFormatted ?: "",
+                    dhuhr = sched.prayers.find { it.type == PrayerType.DHUHR }?.timeFormatted ?: "",
+                    asr = sched.prayers.find { it.type == PrayerType.ASR }?.timeFormatted ?: "",
+                    maghrib = sched.prayers.find { it.type == PrayerType.MAGHRIB }?.timeFormatted ?: "",
+                    isha = sched.prayers.find { it.type == PrayerType.ISHA }?.timeFormatted ?: "",
+                    imsak = sched.imsakTimeFormatted ?: "",
+                    midnight = sched.midnightTimeFormatted ?: "",
+                    calculationMethod = method.name,
+                    juristicMethod = juristic.name,
+                    dateHijri = ""
+                )
+            }
+            database.prayerTimesDao().insertAllPrayerTimes(entities)
         }
     }
 
@@ -298,11 +566,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application), S
 
     fun setCalculationMethod(method: CalculationMethod) {
         _uiState.update { it.copy(calculationMethod = method) }
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.setSetting("calculation_method", method.name)
+        }
         recalculatePrayers()
     }
 
     fun setJuristicMethod(method: JuristicMethod) {
         _uiState.update { it.copy(juristicMethod = method) }
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.setSetting("juristic_method", method.name)
+        }
         recalculatePrayers()
     }
 
@@ -392,6 +666,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application), S
         // update progress
         viewModelScope.launch {
             repository.updateQuranProgress(surah.number, surah.nameAr, 1)
+        }
+    }
+
+    fun saveMushafProgress(pageNumber: Int, surahName: String, surahNumber: Int) {
+        viewModelScope.launch {
+            repository.updateQuranProgress(surahNumber, surahName, pageNumber)
         }
     }
 
@@ -501,12 +781,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application), S
     // Prayer Times & Qibla
     private fun recalculatePrayers() {
         val city = _uiState.value.selectedCity
+        val manualOffsets = mapOf(
+            PrayerType.FAJR to _uiState.value.fajrOffsetMinutes,
+            PrayerType.SUNRISE to _uiState.value.sunriseOffsetMinutes,
+            PrayerType.DHUHR to _uiState.value.dhuhrOffsetMinutes,
+            PrayerType.ASR to _uiState.value.asrOffsetMinutes,
+            PrayerType.MAGHRIB to _uiState.value.maghribOffsetMinutes,
+            PrayerType.ISHA to _uiState.value.ishaOffsetMinutes
+        )
         val schedule = PrayerTimesCalculator.calculatePrayerTimes(
             latitude = city.latitude,
             longitude = city.longitude,
             calendar = Calendar.getInstance(),
             method = _uiState.value.calculationMethod,
-            juristic = _uiState.value.juristicMethod
+            juristic = _uiState.value.juristicMethod,
+            manualOffsets = manualOffsets
         )
 
         val qiblaAngle = QiblaCalculator.calculateQiblaAngle(city.latitude, city.longitude)
@@ -574,51 +863,141 @@ class MainViewModel(application: Application) : AndroidViewModel(application), S
         }
     }
 
-    // Compass Sensor
-    private fun startSensorListening() {
-        rotationSensor?.let { sensor ->
-            sensorManager?.registerListener(this, sensor, SensorManager.SENSOR_DELAY_UI)
+    // Compass Multi-Sensor Management
+    fun startSensorListening() {
+        if (isSensorListening || sensorManager == null) return
+        isSensorListening = true
+
+        when {
+            rotationVectorSensor != null -> {
+                sensorManager.registerListener(this, rotationVectorSensor, SensorManager.SENSOR_DELAY_UI)
+            }
+            geomagneticSensor != null -> {
+                sensorManager.registerListener(this, geomagneticSensor, SensorManager.SENSOR_DELAY_UI)
+            }
+            accelerometerSensor != null && magnetometerSensor != null -> {
+                sensorManager.registerListener(this, accelerometerSensor, SensorManager.SENSOR_DELAY_UI)
+                sensorManager.registerListener(this, magnetometerSensor, SensorManager.SENSOR_DELAY_UI)
+            }
+            orientationSensor != null -> {
+                @Suppress("DEPRECATION")
+                sensorManager.registerListener(this, orientationSensor, SensorManager.SENSOR_DELAY_UI)
+            }
         }
+    }
+
+    fun stopSensorListening() {
+        if (!isSensorListening || sensorManager == null) return
+        isSensorListening = false
+        sensorManager.unregisterListener(this)
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
         if (event == null) return
 
-        if (event.sensor.type == Sensor.TYPE_ROTATION_VECTOR) {
-            val rotationMatrix = FloatArray(9)
-            SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
-            val orientationAngles = FloatArray(3)
-            SensorManager.getOrientation(rotationMatrix, orientationAngles)
+        var rawAzimuth: Float? = null
+        var pitch = 0f
+        var roll = 0f
 
-            var azimuthDegrees = Math.toDegrees(orientationAngles[0].toDouble()).toFloat()
-            if (azimuthDegrees < 0) azimuthDegrees += 360f
+        when (event.sensor.type) {
+            Sensor.TYPE_ROTATION_VECTOR, Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR -> {
+                val rotationMatrix = FloatArray(9)
+                SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
+                val orientationAngles = FloatArray(3)
+                SensorManager.getOrientation(rotationMatrix, orientationAngles)
 
-            val qibla = _uiState.value.qiblaAngle.toFloat()
-            val diff = kotlin.math.abs(azimuthDegrees - qibla)
-            val isAligned = diff < 3.5f || diff > 356.5f
-
-            _uiState.update {
-                it.copy(
-                    compassHeading = azimuthDegrees,
-                    isPointedAtQibla = isAligned
-                )
+                var deg = Math.toDegrees(orientationAngles[0].toDouble()).toFloat()
+                if (deg < 0) deg += 360f
+                rawAzimuth = deg
+                pitch = Math.toDegrees(orientationAngles[1].toDouble()).toFloat()
+                roll = Math.toDegrees(orientationAngles[2].toDouble()).toFloat()
             }
-        } else if (event.sensor.type == Sensor.TYPE_ORIENTATION) {
-            val heading = event.values[0]
+            Sensor.TYPE_ACCELEROMETER -> {
+                System.arraycopy(event.values, 0, lastAccelerometer, 0, 3)
+                lastAccelerometerSet = true
+            }
+            Sensor.TYPE_MAGNETIC_FIELD -> {
+                System.arraycopy(event.values, 0, lastMagnetometer, 0, 3)
+                lastMagnetometerSet = true
+            }
+            @Suppress("DEPRECATION")
+            Sensor.TYPE_ORIENTATION -> {
+                var deg = event.values[0]
+                if (deg < 0) deg += 360f
+                rawAzimuth = deg
+            }
+        }
+
+        if (rawAzimuth == null && lastAccelerometerSet && lastMagnetometerSet) {
+            val r = FloatArray(9)
+            val i = FloatArray(9)
+            if (SensorManager.getRotationMatrix(r, i, lastAccelerometer, lastMagnetometer)) {
+                val orientationAngles = FloatArray(3)
+                SensorManager.getOrientation(r, orientationAngles)
+                var deg = Math.toDegrees(orientationAngles[0].toDouble()).toFloat()
+                if (deg < 0) deg += 360f
+                rawAzimuth = deg
+                pitch = Math.toDegrees(orientationAngles[1].toDouble()).toFloat()
+                roll = Math.toDegrees(orientationAngles[2].toDouble()).toFloat()
+            }
+        }
+
+        if (rawAzimuth != null) {
+            val city = _uiState.value.selectedCity
+            val declination = try {
+                val geoField = GeomagneticField(
+                    city.latitude.toFloat(),
+                    city.longitude.toFloat(),
+                    0f,
+                    System.currentTimeMillis()
+                )
+                geoField.declination
+            } catch (_: Exception) {
+                0f
+            }
+
+            // Adjust heading to True North
+            val trueNorthAzimuth = (rawAzimuth + declination + 360f) % 360f
+            val smoothed = smoothHeading(trueNorthAzimuth)
+
             val qibla = _uiState.value.qiblaAngle.toFloat()
-            val diff = kotlin.math.abs(heading - qibla)
-            val isAligned = diff < 3.5f || diff > 356.5f
+            var diff = kotlin.math.abs(smoothed - qibla) % 360f
+            if (diff > 180f) diff = 360f - diff
+            val isAligned = diff <= 4.0f
+
+            val isFlat = kotlin.math.abs(pitch) < 35f && kotlin.math.abs(roll) < 35f
 
             _uiState.update {
                 it.copy(
-                    compassHeading = heading,
-                    isPointedAtQibla = isAligned
+                    compassHeading = smoothed,
+                    isPointedAtQibla = isAligned,
+                    magneticDeclination = declination,
+                    pitchDegrees = pitch,
+                    rollDegrees = roll,
+                    isFlatOnSurface = isFlat
                 )
             }
         }
     }
 
-    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+    private fun smoothHeading(target: Float): Float {
+        if (!hasInitialHeading) {
+            smoothedAzimuth = target
+            hasInitialHeading = true
+            return target
+        }
+        var diff = (target - smoothedAzimuth) % 360f
+        if (diff > 180f) diff -= 360f
+        if (diff < -180f) diff += 360f
+
+        val alpha = 0.18f
+        smoothedAzimuth = ((smoothedAzimuth + diff * alpha) + 360f) % 360f
+        return smoothedAzimuth
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+        _uiState.update { it.copy(compassAccuracy = accuracy) }
+    }
 
     fun vibrateDevice(durationMillis: Long = 50) {
         val context = getApplication<Application>()

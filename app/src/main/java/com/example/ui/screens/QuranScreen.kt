@@ -19,15 +19,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.local.entity.QuranProgressEntity
+import com.example.data.quran.MushafRepository
 import com.example.data.quran.QuranRepository
 import com.example.data.quran.Surah
 import com.example.ui.theme.GoldAccent
+import com.example.ui.theme.QuranFontFamily
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuranScreen(
     quranProgress: QuranProgressEntity?,
     onSurahSelected: (Int) -> Unit,
+    onPageSelected: (Int) -> Unit = {},
     onContinueReadingClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -44,6 +47,14 @@ fun QuranScreen(
                         it.nameEn.lowercase().contains(q) ||
                         it.number.toString() == q
             }
+        }
+    }
+
+    val matchingVerses = remember(searchQuery) {
+        if (searchQuery.trim().length >= 2) {
+            MushafRepository.searchPages(searchQuery.trim(), limit = 20)
+        } else {
+            emptyList()
         }
     }
 
@@ -69,7 +80,7 @@ fun QuranScreen(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("ابحث عن سورة أو رقمها...") },
+                placeholder = { Text("ابحث عن سورة، آية، أو كلمة بالقرآن...") },
                 leadingIcon = {
                     Icon(imageVector = Icons.Default.Search, contentDescription = "بحث")
                 },
@@ -128,7 +139,7 @@ fun QuranScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = "سورة ${quranProgress.surahName} (الآية ${quranProgress.ayahNumber})",
+                                    text = "سورة ${quranProgress.surahName} (صفحة ${quranProgress.ayahNumber})",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -165,17 +176,101 @@ fun QuranScreen(
             }
 
             if (selectedTab == 0) {
-                // Surahs List
+                // Surahs and Matching Verses List
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(filteredSurahs, key = { it.number }) { surah ->
-                        SurahListItem(
-                            surah = surah,
-                            onClick = { onSurahSelected(surah.number) }
-                        )
+                    if (filteredSurahs.isNotEmpty()) {
+                        if (searchQuery.isNotBlank()) {
+                            item {
+                                Text(
+                                    text = "السور المطابقة (${filteredSurahs.size})",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(vertical = 4.dp)
+                                )
+                            }
+                        }
+                        items(filteredSurahs, key = { it.number }) { surah ->
+                            SurahListItem(
+                                surah = surah,
+                                onClick = {
+                                    onPageSelected(surah.page)
+                                    onSurahSelected(surah.number)
+                                }
+                            )
+                        }
+                    }
+
+                    if (searchQuery.isNotBlank() && matchingVerses.isNotEmpty()) {
+                        item {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "الآيات والصفحات المطابقة (${matchingVerses.size})",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+                        }
+                        items(matchingVerses) { hit ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onPageSelected(hit.pageNumber) },
+                                shape = RoundedCornerShape(14.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Text(
+                                        text = hit.text,
+                                        fontFamily = QuranFontFamily,
+                                        fontSize = 17.sp,
+                                        lineHeight = 26.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "سورة ${hit.surahName} • صفحة ${hit.pageNumber}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "فتح صفحة المصحف ⟵",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = GoldAccent,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (searchQuery.isNotBlank() && filteredSurahs.isEmpty() && matchingVerses.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "لا توجد نتائج مطابقة لـ \"$searchQuery\"",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
             } else {
@@ -188,10 +283,11 @@ fun QuranScreen(
                     items(30) { index ->
                         val juzNumber = index + 1
                         val firstSurahInJuz = QuranRepository.SURAHS.firstOrNull { it.juz == juzNumber } ?: QuranRepository.SURAHS[0]
+                        val juzPage = MushafRepository.getPageForJuz(juzNumber)
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onSurahSelected(firstSurahInJuz.number) },
+                                .clickable { onPageSelected(juzPage) },
                             shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                         ) {
@@ -224,7 +320,7 @@ fun QuranScreen(
                                             fontWeight = FontWeight.Bold
                                         )
                                         Text(
-                                            text = "يبدأ من سورة ${firstSurahInJuz.nameAr}",
+                                            text = "يبدأ من سورة ${firstSurahInJuz.nameAr} • صفحة $juzPage",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -294,7 +390,7 @@ fun SurahListItem(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "${surah.nameEn} • ${surah.versesCount} آية",
+                        text = "${surah.nameEn} • ${surah.versesCount} آية • صفحة ${surah.page}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

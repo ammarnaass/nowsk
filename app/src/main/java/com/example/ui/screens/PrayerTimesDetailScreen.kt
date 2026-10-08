@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -51,7 +52,7 @@ fun PrayerTimesDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "رجوع"
                         )
                     }
@@ -152,8 +153,15 @@ fun PrayerTimesDetailScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
+                            val hasCustomOffsets = uiState.fajrOffsetMinutes != 0 ||
+                                    uiState.sunriseOffsetMinutes != 0 ||
+                                    uiState.dhuhrOffsetMinutes != 0 ||
+                                    uiState.asrOffsetMinutes != 0 ||
+                                    uiState.maghribOffsetMinutes != 0 ||
+                                    uiState.ishaOffsetMinutes != 0
+
                             Icon(
-                                imageVector = Icons.Default.CloudSync,
+                                imageVector = if (hasCustomOffsets) Icons.Default.Tune else Icons.Default.CheckCircle,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
@@ -161,8 +169,9 @@ fun PrayerTimesDetailScreen(
                             Text(
                                 text = when {
                                     uiState.isAladhanSyncing -> "جاري مزامنة Aladhan API..."
-                                    uiState.aladhanSyncSuccess == true -> "مواقيت محدثة من Aladhan API (محفوظة)"
-                                    else -> "الحساب الفلكي الدقيق (يعمل دون اتصال)"
+                                    hasCustomOffsets -> "المحرك المحلي المعتمد • مع دقائق معايرة للمسجد"
+                                    uiState.aladhanSyncSuccess == true -> "مواقيت محدثة ومتزامنة (محفوظة محلياً)"
+                                    else -> "المحرك الفلكي المحلي المعتمد (100% بدون إنترنت)"
                                 },
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)

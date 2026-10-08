@@ -1,0 +1,31 @@
+{
+  "appName_ar": "نُسُك إسلامي - مواقيت الصلاة والقرآن",
+  "appName_en": "Nusk Islamic - Prayer Times & Quran",
+  "briefIntro_ar": "مواقيت الصلاة الدقيقة والأذان، المصحف الشريف، الأذكار، وبوصلة القبلة",
+  "briefIntro_en": "Accurate prayer times & Adhan, Holy Quran, daily Athkar & Qibla compass",
+  "category": "Books & Reference",
+  "subCategory": "Religion",
+  "contentRating": "Rated for 3+",
+  "keywords": [
+    "مواقيت الصلاة",
+    "القرآن الكريم",
+    "أذان",
+    "أذكار الصباح والمساء",
+    "حصن المسلم",
+    "القبلة",
+    "مسبحة إلكترونية",
+    "التقويم الهجري",
+    "مصحف المدينة",
+    "نسك إسلامي"
+  ],
+  "packageName": "com.nusakkir.islamic",
+  "versionName": "1.0",
+  "versionCode": 1,
+  "minSdkVersion": 24,
+  "targetSdkVersion": 36,
+  "assets": {
+    "icon_216": "assets/icon/icon_216x216.png",
+    "icon_512": "assets/icon/icon_512x512.png",
+    "screenshots_directory": "assets/screenshots/"
+  }
+}

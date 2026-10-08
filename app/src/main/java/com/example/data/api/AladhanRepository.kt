@@ -5,6 +5,7 @@ import com.example.data.api.model.AladhanTimingsResponse
 import com.example.data.local.NusakkirDatabase
 import com.example.data.local.entity.PrayerTimeEntity
 import com.example.data.prayer.CityLocation
+import com.example.data.prayer.CityPresets
 import com.example.data.prayer.PrayerSchedule
 import com.example.data.prayer.PrayerTimeItem
 import com.example.data.prayer.PrayerType
@@ -57,83 +58,22 @@ class AladhanRepository(
     )
 
     /**
-     * Extended catalog of Places (Algeria, Arab world, Islamic world)
+     * Extended catalog of Places (Algeria's 58 Wilayas, Arab world, Islamic world)
      */
-    val availablePlaces: List<CityLocation> = listOf(
-        // الجزائر (جميع الولايات والمدن الرئيسية)
-        CityLocation("المسيلة", "الجزائر", 35.7058, 4.5419, 1.0),
-        CityLocation("الجزائر العاصمة", "الجزائر", 36.7538, 3.0588, 1.0),
-        CityLocation("وهران", "الجزائر", 35.6976, -0.6337, 1.0),
-        CityLocation("قسنطينة", "الجزائر", 36.3650, 6.6147, 1.0),
-        CityLocation("سطيف", "الجزائر", 36.1898, 5.4108, 1.0),
-        CityLocation("عنابة", "الجزائر", 36.9000, 7.7667, 1.0),
-        CityLocation("باتنة", "الجزائر", 35.5559, 6.1741, 1.0),
-        CityLocation("تلمسان", "الجزائر", 34.8783, -1.3150, 1.0),
-        CityLocation("بسكرة", "الجزائر", 34.8504, 5.7281, 1.0),
-        CityLocation("غرداية", "الجزائر", 32.4909, 3.6735, 1.0),
-        CityLocation("ورقلة", "الجزائر", 31.9493, 5.3250, 1.0),
-        CityLocation("بشار", "الجزائر", 31.6167, -2.2167, 1.0),
-        CityLocation("تمنراست", "الجزائر", 22.7850, 5.5228, 1.0),
-        CityLocation("البليدة", "الجزائر", 36.4700, 2.8277, 1.0),
-        CityLocation("الشلف", "الجزائر", 36.1653, 1.3344, 1.0),
-        CityLocation("جيجل", "الجزائر", 36.8206, 5.7667, 1.0),
-        CityLocation("سكيكدة", "الجزائر", 36.8792, 6.9069, 1.0),
-        CityLocation("مستغانم", "الجزائر", 35.9311, 0.0892, 1.0),
-        CityLocation("برج بوعريريج", "الجزائر", 36.0732, 4.7611, 1.0),
-        CityLocation("البويرة", "الجزائر", 36.3749, 3.9020, 1.0),
-        CityLocation("تيزي وزو", "الجزائر", 36.7118, 4.0459, 1.0),
-        CityLocation("بجاية", "الجزائر", 36.7509, 5.0567, 1.0),
-        CityLocation("المدية", "الجزائر", 36.2642, 2.7539, 1.0),
-        CityLocation("الجلفة", "الجزائر", 34.6728, 3.2630, 1.0),
-        CityLocation("تبسة", "الجزائر", 35.4042, 8.1242, 1.0),
-
-        // الحرمان الشريفان والمدن الإسلامية
-        CityLocation("مكة المكرمة", "السعودية", 21.4225, 39.8262, 3.0),
-        CityLocation("المدينة المنورة", "السعودية", 24.4672, 39.6111, 3.0),
-        CityLocation("القدس الشريف", "فلسطين", 31.7683, 35.2137, 2.0),
-        CityLocation("الرياض", "السعودية", 24.7136, 46.6753, 3.0),
-        CityLocation("جدة", "السعودية", 21.5433, 39.1728, 3.0),
-        CityLocation("القاهرة", "مصر", 30.0444, 31.2357, 2.0),
-        CityLocation("الإسكندرية", "مصر", 31.2001, 29.9187, 2.0),
-        CityLocation("عمان", "الأردن", 31.9454, 35.9284, 3.0),
-        CityLocation("الدار البيضاء", "المغرب", 33.5731, -7.5898, 1.0),
-        CityLocation("الرباط", "المغرب", 34.0209, -6.8416, 1.0),
-        CityLocation("فاس", "المغرب", 34.0181, -5.0078, 1.0),
-        CityLocation("مراكش", "المغرب", 31.6295, -7.9811, 1.0),
-        CityLocation("تونس العاصمة", "تونس", 36.8065, 10.1815, 1.0),
-        CityLocation("صفاقس", "تونس", 34.7406, 10.7603, 1.0),
-        CityLocation("سوسة", "تونس", 35.8256, 10.6084, 1.0),
-        CityLocation("طرابلس", "ليبيا", 32.8872, 13.1913, 2.0),
-        CityLocation("بنغازي", "ليبيا", 32.1167, 20.0667, 2.0),
-        CityLocation("الخرطوم", "السودان", 15.5007, 32.5599, 2.0),
-        CityLocation("دبي", "الإمارات", 25.2048, 55.2708, 4.0),
-        CityLocation("أبوظبي", "الإمارات", 24.4539, 54.3773, 4.0),
-        CityLocation("الدوحة", "قطر", 25.2854, 51.5310, 3.0),
-        CityLocation("مدينة الكويت", "الكويت", 29.3759, 47.9774, 3.0),
-        CityLocation("المنامة", "البحرين", 26.2285, 50.5860, 3.0),
-        CityLocation("مسقط", "عُمان", 23.5880, 58.3829, 4.0),
-        CityLocation("بغداد", "العراق", 33.3152, 44.3661, 3.0),
-        CityLocation("البصرة", "العراق", 30.5081, 47.7835, 3.0),
-        CityLocation("أربيل", "العراق", 36.1901, 44.0091, 3.0),
-        CityLocation("دمشق", "سوريا", 33.5138, 36.2765, 3.0),
-        CityLocation("حلب", "سوريا", 36.2021, 37.1343, 3.0),
-        CityLocation("بيروت", "لبنان", 33.8938, 35.5018, 2.0),
-        CityLocation("صنعاء", "اليمن", 15.3694, 44.1910, 3.0),
-        CityLocation("إسطنبول", "تركيا", 41.0082, 28.9784, 3.0),
-        CityLocation("أنقرة", "تركيا", 39.9334, 32.8597, 3.0),
-        CityLocation("جاكرتا", "إندونيسيا", -6.2088, 106.8456, 7.0),
-        CityLocation("كوالالمبور", "ماليزيا", 3.1390, 101.6869, 8.0)
-    )
+    val availablePlaces: List<CityLocation> = CityPresets.CITIES
 
     /**
-     * Search places by Arabic or English query
+     * Search places by Arabic name, English name, country, or Wilaya code
      */
     fun searchPlaces(query: String): List<CityLocation> {
-        val q = query.trim().lowercase(Locale.ROOT)
+        val q = query.trim()
         if (q.isEmpty()) return availablePlaces
+        val cleanQ = q.lowercase(Locale.ROOT)
         return availablePlaces.filter {
-            it.nameAr.contains(q, ignoreCase = true) ||
-            it.countryAr.contains(q, ignoreCase = true)
+            it.nameAr.contains(cleanQ, ignoreCase = true) ||
+            it.countryAr.contains(cleanQ, ignoreCase = true) ||
+            it.nameEn.contains(cleanQ, ignoreCase = true) ||
+            (it.wilayaCode > 0 && it.wilayaCode.toString() == cleanQ.trimStart('0'))
         }
     }
 

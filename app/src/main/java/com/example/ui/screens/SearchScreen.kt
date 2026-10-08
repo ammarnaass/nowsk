@@ -1,12 +1,13 @@
 package com.example.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Search
@@ -17,9 +18,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.data.adhkar.DhikrItem
 import com.example.data.quran.Ayah
+import com.example.data.quran.QuranRepository
 import com.example.data.quran.Surah
+import com.example.ui.theme.GoldAccent
+import com.example.ui.theme.QuranFontFamily
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,16 +35,21 @@ fun SearchScreen(
     dhikrResults: List<DhikrItem>,
     onQueryChange: (String) -> Unit,
     onSurahClick: (Int) -> Unit,
+    onPageClick: (Int) -> Unit = {},
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    BackHandler {
+        onBackClick()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("البحث الشامل", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "رجوع")
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع")
                     }
                 }
             )
@@ -156,25 +166,41 @@ fun SearchScreen(
                             )
                         }
                         items(ayahResults) { ayah ->
+                            val surah = QuranRepository.getSurah(ayah.surahNumber)
+                            val surahName = surah?.nameAr ?: "سورة رقم ${ayah.surahNumber}"
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { onSurahClick(ayah.surahNumber) },
+                                    .clickable { onPageClick(ayah.pageNumber) },
                                 shape = RoundedCornerShape(14.dp),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                             ) {
                                 Column(modifier = Modifier.padding(14.dp)) {
                                     Text(
-                                        text = "﴿${ayah.text}﴾",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium
+                                        text = ayah.text,
+                                        fontFamily = QuranFontFamily,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        lineHeight = 26.sp
                                     )
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Text(
-                                        text = "سورة رقم ${ayah.surahNumber} - الآية ${ayah.ayahNumber}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "سورة $surahName • صفحة ${ayah.pageNumber}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "انتقال إلى صفحة المصحف ⟵",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = GoldAccent,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
                                 }
                             }
                         }

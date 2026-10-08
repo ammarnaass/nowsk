@@ -17,6 +17,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
+import android.util.Log
+import android.view.View
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -51,13 +53,21 @@ fun AdaptiveBannerAd(
         return
     }
 
+    val context = LocalContext.current
+    val isSupported = remember(context) { AdManager.isAdSupported(context) }
+
+    // If WebView provider is missing or disabled on this device/emulator,
+    // gracefully omit the ad view instead of causing a fatal runtime crash.
+    if (!isSupported) {
+        return
+    }
+
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
             .testTag("adaptive_banner_ad_container"),
         contentAlignment = Alignment.Center
     ) {
-        val context = LocalContext.current
         val lifecycleOwner = LocalLifecycleOwner.current
 
         val containerWidthDp = maxWidth.value.toInt().coerceAtLeast(320)
@@ -74,53 +84,72 @@ fun AdaptiveBannerAd(
         DisposableEffect(lifecycleOwner, adViewInstance) {
             val adView = adViewInstance
             val observer = LifecycleEventObserver { _, event ->
-                when (event) {
-                    Lifecycle.Event.ON_RESUME -> adView?.resume()
-                    Lifecycle.Event.ON_PAUSE -> adView?.pause()
-                    Lifecycle.Event.ON_DESTROY -> adView?.destroy()
-                    else -> {}
+                try {
+                    when (event) {
+                        Lifecycle.Event.ON_RESUME -> adView?.resume()
+                        Lifecycle.Event.ON_PAUSE -> adView?.pause()
+                        Lifecycle.Event.ON_DESTROY -> adView?.destroy()
+                        else -> {}
+                    }
+                } catch (t: Throwable) {
+                    Log.w("AdaptiveBannerAd", "AdView lifecycle error: ${t.message}")
                 }
             }
             lifecycleOwner.lifecycle.addObserver(observer)
             onDispose {
                 lifecycleOwner.lifecycle.removeObserver(observer)
-                adView?.destroy()
+                try {
+                    adView?.destroy()
+                } catch (t: Throwable) {
+                    Log.w("AdaptiveBannerAd", "AdView destroy error: ${t.message}")
+                }
             }
         }
 
-        AndroidView(
-            modifier = Modifier
-                .wrapContentSize()
-                .padding(vertical = 4.dp)
-                .testTag("adaptive_banner_ad_view"),
-            factory = { ctx ->
-                AdView(ctx).apply {
-                    setAdSize(adaptiveSize)
-                    setAdUnitId(adUnitId)
-                    adListener = object : AdListener() {
-                        override fun onAdLoaded() {
-                            isLoaded = true
-                            loadFailed = false
-                            onAdLoaded?.invoke()
-                        }
+        if (!loadFailed) {
+            AndroidView(
+                modifier = Modifier
+                    .wrapContentSize()
+                    .padding(vertical = 4.dp)
+                    .testTag("adaptive_banner_ad_view"),
+                factory = { ctx ->
+                    try {
+                        AdView(ctx).apply {
+                            setAdSize(adaptiveSize)
+                            setAdUnitId(adUnitId)
+                            adListener = object : AdListener() {
+                                override fun onAdLoaded() {
+                                    isLoaded = true
+                                    loadFailed = false
+                                    onAdLoaded?.invoke()
+                                }
 
-                        override fun onAdFailedToLoad(error: LoadAdError) {
-                            isLoaded = false
-                            loadFailed = true
-                            onAdFailedToLoad?.invoke(error)
+                                override fun onAdFailedToLoad(error: LoadAdError) {
+                                    isLoaded = false
+                                    loadFailed = true
+                                    onAdFailedToLoad?.invoke(error)
+                                }
+                            }
+                            adViewInstance = this
+                            loadAd(AdManager.buildAdRequest())
                         }
+                    } catch (t: Throwable) {
+                        Log.e("AdaptiveBannerAd", "Failed to create AdView safely", t)
+                        loadFailed = true
+                        View(ctx)
                     }
-                    adViewInstance = this
-                    loadAd(AdManager.buildAdRequest())
+                },
+                update = { view ->
+                    try {
+                        if (view is AdView && view.adSize != adaptiveSize) {
+                            view.setAdSize(adaptiveSize)
+                        }
+                    } catch (t: Throwable) {
+                        Log.w("AdaptiveBannerAd", "Error updating AdView: ${t.message}")
+                    }
                 }
-            },
-            update = { view ->
-                // If the adaptive size changed significantly, update ad size
-                if (view.adSize != adaptiveSize) {
-                    view.setAdSize(adaptiveSize)
-                }
-            }
-        )
+            )
+        }
 
         // Clean fallback placeholder when offline or test ad fails to load
         if (loadFailed) {

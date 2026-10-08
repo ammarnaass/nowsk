@@ -35,6 +35,9 @@ object AdManager {
     private val isInitializing = AtomicBoolean(false)
     private val initialized = AtomicBoolean(false)
 
+    @Volatile
+    private var webViewSupported: Boolean? = null
+
     val isInitialized: Boolean
         get() = initialized.get()
 
@@ -45,10 +48,33 @@ object AdManager {
     private var isRewardedLoading = false
 
     /**
+     * Checks if WebView provider is available on this Android device/emulator.
+     * AdMob requires a valid WebView provider to function. If none is installed,
+     * accessing WebSettings or initializing ads will crash the entire app.
+     */
+    fun isAdSupported(context: Context): Boolean {
+        webViewSupported?.let { return it }
+        return try {
+            android.webkit.WebSettings.getDefaultUserAgent(context)
+            webViewSupported = true
+            true
+        } catch (t: Throwable) {
+            Log.w(TAG, "WebView is not available on this device (${t.message}). Disabling ads safely.")
+            webViewSupported = false
+            false
+        }
+    }
+
+    /**
      * Initializes Google Mobile Ads SDK on a background thread.
      * Safe to call multiple times; redundant calls are ignored.
      */
     fun initialize(context: Context, onComplete: (() -> Unit)? = null) {
+        if (!isAdSupported(context)) {
+            Log.w(TAG, "AdMob initialization skipped: WebView is not installed on this system.")
+            onComplete?.invoke()
+            return
+        }
         if (initialized.get()) {
             onComplete?.invoke()
             return
@@ -75,9 +101,9 @@ object AdManager {
 
                 onComplete?.invoke()
             }
-        } catch (e: Exception) {
+        } catch (t: Throwable) {
             isInitializing.set(false)
-            Log.e(TAG, "Error initializing MobileAds", e)
+            Log.e(TAG, "Error initializing MobileAds", t)
         }
     }
 
@@ -96,14 +122,14 @@ object AdManager {
         val safeWidth = widthInDp.coerceAtLeast(320)
         return try {
             AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(context, safeWidth)
-        } catch (e: Exception) {
-            Log.w(TAG, "Falling back to standard BANNER size: ${e.message}")
+        } catch (t: Throwable) {
+            Log.w(TAG, "Falling back to standard BANNER size: ${t.message}")
             AdSize.BANNER
         }
     }
 
     /**
-     * Creates and configures an AdView instance for banner ads.
+     * Creates and configures an AdView instance for banner ads safely.
      */
     @MainThread
     fun createAdaptiveBannerAdView(
@@ -111,12 +137,18 @@ object AdManager {
         adUnitId: String,
         adSize: AdSize,
         adListener: AdListener? = null
-    ): AdView {
-        return AdView(context).apply {
-            this.setAdSize(adSize)
-            this.setAdUnitId(adUnitId)
-            adListener?.let { this.adListener = it }
-            loadAd(buildAdRequest())
+    ): AdView? {
+        if (!isAdSupported(context)) return null
+        return try {
+            AdView(context).apply {
+                this.setAdSize(adSize)
+                this.setAdUnitId(adUnitId)
+                adListener?.let { this.adListener = it }
+                loadAd(buildAdRequest())
+            }
+        } catch (t: Throwable) {
+            Log.e(TAG, "Failed to create AdView safely", t)
+            null
         }
     }
 
@@ -125,51 +157,67 @@ object AdManager {
     // ---------------------------------------------------------
 
     fun preloadInterstitial(context: Context) {
+        if (!isAdSupported(context)) return
         if (interstitialAd != null || isInterstitialLoading) return
         isInterstitialLoading = true
 
-        InterstitialAd.load(
-            context,
-            TEST_INTERSTITIAL_AD_UNIT_ID,
-            buildAdRequest(),
-            object : InterstitialAdLoadCallback() {
-                override fun onAdLoaded(ad: InterstitialAd) {
-                    interstitialAd = ad
-                    isInterstitialLoading = false
-                    Log.d(TAG, "Interstitial Ad loaded")
-                }
+        try {
+            InterstitialAd.load(
+                context,
+                TEST_INTERSTITIAL_AD_UNIT_ID,
+                buildAdRequest(),
+                object : InterstitialAdLoadCallback() {
+                    override fun onAdLoaded(ad: InterstitialAd) {
+                        interstitialAd = ad
+                        isInterstitialLoading = false
+                        Log.d(TAG, "Interstitial Ad loaded")
+                    }
 
-                override fun onAdFailedToLoad(loadAdError: LoadAdError) {
-                    interstitialAd = null
-                    isInterstitialLoading = false
-                    Log.w(TAG, "Interstitial Ad failed to load: ${loadAdError.message}")
+                    override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                        interstitialAd = null
+                        isInterstitialLoading = false
+                        Log.w(TAG, "Interstitial Ad failed to load: ${loadAdError.message}")
+                    }
                 }
-            }
-        )
+            )
+        } catch (t: Throwable) {
+            interstitialAd = null
+            isInterstitialLoading = false
+            Log.w(TAG, "Exception while preloading Interstitial Ad", t)
+        }
     }
 
     fun showInterstitial(
         activity: Activity,
         onAdDismissed: () -> Unit = {}
     ) {
-        val ad = interstitialAd
-        if (ad != null) {
-            ad.fullScreenContentCallback = object : FullScreenContentCallback() {
-                override fun onAdDismissedFullScreenContent() {
-                    interstitialAd = null
-                    preloadInterstitial(activity)
-                    onAdDismissed()
-                }
+        if (!isAdSupported(activity)) {
+            onAdDismissed()
+            return
+        }
+        try {
+            val ad = interstitialAd
+            if (ad != null) {
+                ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+                    override fun onAdDismissedFullScreenContent() {
+                        interstitialAd = null
+                        preloadInterstitial(activity)
+                        onAdDismissed()
+                    }
 
-                override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                    interstitialAd = null
-                    preloadInterstitial(activity)
-                    onAdDismissed()
+                    override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                        interstitialAd = null
+                        preloadInterstitial(activity)
+                        onAdDismissed()
+                    }
                 }
+                ad.show(activity)
+            } else {
+                preloadInterstitial(activity)
+                onAdDismissed()
             }
-            ad.show(activity)
-        } else {
-            preloadInterstitial(activity)
+        } catch (t: Throwable) {
+            Log.e(TAG, "Error showing interstitial", t)
             onAdDismissed()
         }
     }
@@ -179,27 +227,34 @@ object AdManager {
     // ---------------------------------------------------------
 
     fun preloadRewarded(context: Context) {
+        if (!isAdSupported(context)) return
         if (rewardedAd != null || isRewardedLoading) return
         isRewardedLoading = true
 
-        RewardedAd.load(
-            context,
-            TEST_REWARDED_AD_UNIT_ID,
-            buildAdRequest(),
-            object : RewardedAdLoadCallback() {
-                override fun onAdLoaded(ad: RewardedAd) {
-                    rewardedAd = ad
-                    isRewardedLoading = false
-                    Log.d(TAG, "Rewarded Ad loaded")
-                }
+        try {
+            RewardedAd.load(
+                context,
+                TEST_REWARDED_AD_UNIT_ID,
+                buildAdRequest(),
+                object : RewardedAdLoadCallback() {
+                    override fun onAdLoaded(ad: RewardedAd) {
+                        rewardedAd = ad
+                        isRewardedLoading = false
+                        Log.d(TAG, "Rewarded Ad loaded")
+                    }
 
-                override fun onAdFailedToLoad(loadAdError: LoadAdError) {
-                    rewardedAd = null
-                    isRewardedLoading = false
-                    Log.w(TAG, "Rewarded Ad failed to load: ${loadAdError.message}")
+                    override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                        rewardedAd = null
+                        isRewardedLoading = false
+                        Log.w(TAG, "Rewarded Ad failed to load: ${loadAdError.message}")
+                    }
                 }
-            }
-        )
+            )
+        } catch (t: Throwable) {
+            rewardedAd = null
+            isRewardedLoading = false
+            Log.w(TAG, "Exception while preloading Rewarded Ad", t)
+        }
     }
 
     fun showRewarded(
@@ -207,26 +262,35 @@ object AdManager {
         onUserEarnedReward: (Int, String) -> Unit,
         onAdDismissed: () -> Unit = {}
     ) {
-        val ad = rewardedAd
-        if (ad != null) {
-            ad.fullScreenContentCallback = object : FullScreenContentCallback() {
-                override fun onAdDismissedFullScreenContent() {
-                    rewardedAd = null
-                    preloadRewarded(activity)
-                    onAdDismissed()
-                }
+        if (!isAdSupported(activity)) {
+            onAdDismissed()
+            return
+        }
+        try {
+            val ad = rewardedAd
+            if (ad != null) {
+                ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+                    override fun onAdDismissedFullScreenContent() {
+                        rewardedAd = null
+                        preloadRewarded(activity)
+                        onAdDismissed()
+                    }
 
-                override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                    rewardedAd = null
-                    preloadRewarded(activity)
-                    onAdDismissed()
+                    override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                        rewardedAd = null
+                        preloadRewarded(activity)
+                        onAdDismissed()
+                    }
                 }
+                ad.show(activity) { rewardItem ->
+                    onUserEarnedReward(rewardItem.amount, rewardItem.type)
+                }
+            } else {
+                preloadRewarded(activity)
+                onAdDismissed()
             }
-            ad.show(activity) { rewardItem ->
-                onUserEarnedReward(rewardItem.amount, rewardItem.type)
-            }
-        } else {
-            preloadRewarded(activity)
+        } catch (t: Throwable) {
+            Log.e(TAG, "Error showing rewarded ad", t)
             onAdDismissed()
         }
     }
